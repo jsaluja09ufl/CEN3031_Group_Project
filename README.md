@@ -15,7 +15,7 @@ Our goal is to create a smart scheduling and productivity platform that helps in
     - Express
 - Programming Languages
     - Python
-    - Javascript
+    - JavaScript
     - HTML
     - CSS
 - Technologies
