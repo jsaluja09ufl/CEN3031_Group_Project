@@ -3,6 +3,7 @@ import './App.css'
 import Login from './components/Login'
 import SignUp from './components/SignUp'
 import { api } from './api/client'
+import Home from './components/Home'
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
@@ -29,7 +30,7 @@ function App() {
     <div className="card">
       {view === 'home' && (
         <div>
-          <h2>Welcome, {currentUser}!</h2>
+          <Home username={currentUser} />
           <button
             className="btn-submit"
             onClick={() => {
@@ -45,8 +46,9 @@ function App() {
 
       {view === 'login' && (
         <div>
-          <Login onLoginSuccess={(token) => {
-            setCurrentUser(token)
+          <Login onLoginSuccess={(res) => {
+            setCurrentUser(res.username)
+            localStorage.setItem('session_token', res.session_token)
             setView('home')
           }} />
           <p style={{ marginTop: '1rem', textAlign: 'center' }}>
@@ -54,7 +56,7 @@ function App() {
             <button
               type="button"
               style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer' }}
-              onClick={() => setView('register')}
+              onClick={() => setView('signup')}
             >
               Sign Up
             </button>
