@@ -6,9 +6,12 @@ from database.access_db import SupabaseConnect
 import password_handler
 import redis
 from fastapi.middleware.cors import CORSMiddleware
+from habit_tasks import router as habit_tasks_router
 
 load_dotenv()
 app = FastAPI()
+
+app.include_router(habit_tasks_router)
 
 app.add_middleware(
     CORSMiddleware,

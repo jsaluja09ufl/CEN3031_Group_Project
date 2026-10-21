@@ -1,8 +1,11 @@
+
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const apiClient = axios.create({baseURL: API_BASE_URL});
+const apiClient = axios.create({
+  baseURL: API_BASE_URL
+});
 
 export const api = {
   checkHealth: async () => {
@@ -11,7 +14,9 @@ export const api = {
   },
 
   login: async (username, password) => {
-    const res = await apiClient.get(`/login/${encodeURIComponent(username)}/${encodeURIComponent(password)}`);
+    const res = await apiClient.get(
+      `/login/${encodeURIComponent(username)}/${encodeURIComponent(password)}`
+    );
     return res.data;
   },
 
@@ -23,7 +28,29 @@ export const api = {
   },
 
   validatUser: async (session_token) => {
-    const res = await apiClient.get(`/validate_user/${encodeURIComponent(session_token)}`);
+    const res = await apiClient.get(
+      `/validate_user/${encodeURIComponent(session_token)}`
+    );
+    return res.data;
+  },
+
+  // PBI Z — Retrieve the logged-in user's habits and tasks
+  getHabitTasks: async (sessionToken) => {
+    const res = await apiClient.get('/habit-tasks', {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`
+      }
+    });
+    return res.data;
+  },
+
+  // PBI Z — Create a new habit or task
+  createHabitTask: async (sessionToken, habitTask) => {
+    const res = await apiClient.post('/habit-tasks', habitTask, {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`
+      }
+    });
     return res.data;
   }
 };
