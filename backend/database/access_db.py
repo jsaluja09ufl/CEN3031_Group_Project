@@ -46,5 +46,33 @@ class SupabaseConnect:
             if not result:
                 return (False, None)
             return (True, result[0])
+
+    def create_event(self, username, event):
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    "INSERT INTO events (username, title, description, category, priority, start_time, end_time) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING event_id",
+                    (username, event.title, event.description, event.category, event.priority, event.start_time, event.end_time)
+                )
+                event_id = cursor.fetchone()[0]
+                self.connection.commit()
+                return event_id
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return None
+
+    def get_events(self, username):
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            cursor.execute(
+                "SELECT event_id, title, description, category, priority, start_time, end_time FROM events WHERE username = %s ORDER BY start_time",
+                (username,)
+            )
+            # https://www.psycopg.org/psycopg3/docs/api/cursors.html#psycopg.Cursor.description
+            columns = [col.name for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
     
     
