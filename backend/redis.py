@@ -1,8 +1,9 @@
+
 from upstash_redis import Redis
 from dotenv import load_dotenv
+from datetime import datetime
 import os
 import json
-from datetime import datetime
 from datetime import datetime as dt
 import uuid
 
@@ -11,15 +12,23 @@ load_dotenv()
 redis = Redis(url=os.getenv("UPSTASH_REDIS_URL"), token=os.getenv("UPSTASH_REDIS_TOKEN"))
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", 3600))
 
-session_json_template = {
-    "username": None,
-    "login_time": None,
-    "last_updated": None
-}
+SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", "300"))
 
 # sessions are stored as json strings in redis
 def get_session(session_token):
     session = redis.get(session_token)
+
+    if session is None:
+        return None
+
+    if isinstance(session, str):
+        session = json.loads(session)
+
+    if not isinstance(session, dict):
+        return None
+
+    return session
+  
 def _parse_session(raw):
     if raw is None:
         return None
@@ -48,6 +57,7 @@ def touch_session(session_token):
     redis.set(session_token, json.dumps(session), ex=ttl)
     return True
 
+
 def create_session(username):
     now_iso = dt.now().isoformat()
     new_session = session_json_template.copy()
@@ -58,6 +68,7 @@ def create_session(username):
     ttl = int(float(os.getenv("SESSION_TTL_SECONDS", 300)))
     redis.set(session_token, json.dumps(new_session), ex=ttl)
     return session_token
+
 
 def validate_session(session_token):
     session = _parse_session(redis.get(session_token))
@@ -77,18 +88,23 @@ def validate_session(session_token):
             return False
 
     touch_session(session_token)
+
     return session
+
 
 def delete_session(session_token):
     if get_session(session_token) is None:
         return False
+
     redis.delete(session_token)
     return True
+
 
 def update_session(session_token, data):
     session = _parse_session(redis.get(session_token))
     if session is None:
         return False
+
     session.update(data)
     ttl = int(float(os.getenv("SESSION_TTL_SECONDS", 300)))
     redis.set(session_token, json.dumps(session), ex=ttl)

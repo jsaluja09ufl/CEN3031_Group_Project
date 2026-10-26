@@ -1,7 +1,9 @@
+
 import { useEffect, useState } from 'react'
 import './App.css'
 import Login from './components/Login'
 import SignUp from './components/SignUp'
+import HabitTask from './features/habitTask/HabitTask'
 import EventForm from './components/EventForm'
 import EventList from './components/EventList'
 import { api } from './api/client'
@@ -22,6 +24,7 @@ function App() {
 
   useEffect(() => {
     const sessionToken = localStorage.getItem('session_token')
+
     if (sessionToken) {
       api.validatUser(sessionToken)
         .then((res) => {
@@ -37,12 +40,18 @@ function App() {
     }
   }, [])
 
+  const handleLogout = () => {
+    localStorage.removeItem('session_token')
+    setCurrentUser(null)
+    setView('login')
+  }
   useEffect(() => {
     if (view === 'home') loadEvents()
   }, [view])
 
   return (
     <div className="card">
+
       {view === 'home' && (
         <div>
           <div className="home-header">
@@ -64,15 +73,33 @@ function App() {
           <EventList events={events} />
           <Home username={currentUser} />
           <button
+            type="button"
             className="btn-submit"
-            onClick={() => {
-              localStorage.removeItem('session_token')
-              setCurrentUser(null)
-              setView('login')
-            }}
+            onClick={() => setView('habitTasks')}
+          >
+            Habits & Tasks
+          </button>
+
+          <button
+            type="button"
+            className="btn-submit"
+            onClick={handleLogout}
           >
             Log Out
           </button>
+        </div>
+      )}
+
+      {view === 'habitTasks' && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setView('home')}
+          >
+            ← Back to Home
+          </button>
+
+          <HabitTask />
         </div>
       )}
 
@@ -99,11 +126,17 @@ function App() {
       {view === 'signup' && (
         <div>
           <SignUp onSignUpSuccess={() => setView('login')} />
+
           <p style={{ marginTop: '1rem', textAlign: 'center' }}>
             Already have an account?{' '}
             <button
               type="button"
-              style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer' }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#2563eb',
+                cursor: 'pointer'
+              }}
               onClick={() => setView('login')}
             >
               Log In
@@ -111,6 +144,7 @@ function App() {
           </p>
         </div>
       )}
+
     </div>
   )
 }
