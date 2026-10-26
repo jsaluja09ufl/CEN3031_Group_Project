@@ -11,33 +11,18 @@ export default function Login({ onLoginSuccess }) {
     e.preventDefault()
     setMessage(null)
 
-    try {
-      const result = await api.login(username, password)
-
-      if (result.success) {
-        localStorage.setItem('session_token', result.session_token)
-
-        setMessage({
-          type: 'success',
-          text: 'Login successful!'
-        })
-
-        if (onLoginSuccess) {
-          onLoginSuccess(result.session_token)
-        }
-      } else {
-        setMessage({
-          type: 'error',
-          text: result.error || 'Invalid username or password.'
+    const result = await api.login(username, password)
+    if (result.success) {
+      localStorage.setItem('session_token', result.session_token)
+      setMessage({ type: 'success', text: 'Login successful!' })
+      if (onLoginSuccess) {
+        onLoginSuccess({
+          session_token: result.session_token,
+          username: result.username
         })
       }
-    } catch (error) {
-      console.error('Login request failed:', error)
-
-      setMessage({
-        type: 'error',
-        text: `Login request failed (${error.response?.status || 'network error'}).`
-      })
+    } else {
+      setMessage({ type: 'error', text: result.error})
     }
   }
 

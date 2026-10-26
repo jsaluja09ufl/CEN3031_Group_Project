@@ -52,6 +52,17 @@ export const api = {
       }
     });
     return res.data;
+  },
+
+  // https://axios-http.com/docs/req_config
+  createEvent: async (session_token, event) => {
+    const res = await apiClient.post('/events', event, { headers: { 'session-token': session_token } });
+    return res.data;
+  },
+
+  getEvents: async (session_token) => {
+    const res = await apiClient.get('/events', { headers: { 'session-token': session_token } });
+    return res.data;
   }
 };
 

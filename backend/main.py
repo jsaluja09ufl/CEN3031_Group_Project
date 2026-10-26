@@ -1,10 +1,11 @@
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from dotenv import load_dotenv
 import os
 from database.access_db import SupabaseConnect
 import password_handler
 import redis
+from models import EventCreate
 from fastapi.middleware.cors import CORSMiddleware
 from habit_tasks import router as habit_tasks_router
 
@@ -45,7 +46,7 @@ def login(username, password):
     if user_password_hash[0]:
         if password_handler.verify_password(password, user_password_hash[1]):
             session_token = redis.create_session(username)
-            return {"success": True, "session_token": session_token}
+            return {"success": True, "session_token": session_token, "username": username}
         else:
             return {"success": False, "error": "Invalid password"}
     return {"success": False, "error": "Invalid username"}
@@ -56,6 +57,25 @@ def validate_user(session_token):
     if session:
         return {"success": True, "session": session, "session_token": session_token}
     return {"success": False, "error": "Invalid session"}
+
+# session token is sent as a "session-token" header: https://fastapi.tiangolo.com/tutorial/header-params/
+@app.post("/events")
+def create_event(event: EventCreate, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+
+    event_id = supabase_client.create_event(session["username"], event)
+    if event_id is None:
+        return {"success": False, "error": "Could not create event"}
+    return {"success": True, "event_id": event_id}
+
+@app.get("/events")
+def get_events(session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return {"success": True, "events": supabase_client.get_events(session["username"])}
 
 
 if __name__ == "__main__":
