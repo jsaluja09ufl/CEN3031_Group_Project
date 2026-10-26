@@ -43,7 +43,7 @@ def login(username, password):
     if user_password_hash[0]:
         if password_handler.verify_password(password, user_password_hash[1]):
             session_token = redis.create_session(username)
-            return {"success": True, "session_token": session_token}
+            return {"success": True, "session_token": session_token, "username": username}
         else:
             return {"success": False, "error": "Invalid password"}
     return {"success": False, "error": "Invalid username"}

@@ -14,7 +14,12 @@ export default function Login({ onLoginSuccess }) {
     if (result.success) {
       localStorage.setItem('session_token', result.session_token)
       setMessage({ type: 'success', text: 'Login successful!' })
-      if (onLoginSuccess) onLoginSuccess(username)
+      if (onLoginSuccess) {
+        onLoginSuccess({
+          session_token: result.session_token,
+          username: result.username
+        })
+      }
     } else {
       setMessage({ type: 'error', text: result.error})
     }

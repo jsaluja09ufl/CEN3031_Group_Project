@@ -5,6 +5,7 @@ import SignUp from './components/SignUp'
 import EventForm from './components/EventForm'
 import EventList from './components/EventList'
 import { api } from './api/client'
+import Home from './components/Home'
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
@@ -61,13 +62,25 @@ function App() {
           <EventForm onEventCreated={loadEvents} />
           <h2>Your Events</h2>
           <EventList events={events} />
+          <Home username={currentUser} />
+          <button
+            className="btn-submit"
+            onClick={() => {
+              localStorage.removeItem('session_token')
+              setCurrentUser(null)
+              setView('login')
+            }}
+          >
+            Log Out
+          </button>
         </div>
       )}
 
       {view === 'login' && (
         <div>
-          <Login onLoginSuccess={(username) => {
-            setCurrentUser(username)
+          <Login onLoginSuccess={(res) => {
+            setCurrentUser(res.username)
+            localStorage.setItem('session_token', res.session_token)
             setView('home')
           }} />
           <p style={{ marginTop: '1rem', textAlign: 'center' }}>
