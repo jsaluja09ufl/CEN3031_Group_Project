@@ -1,7 +1,6 @@
 
 from upstash_redis import Redis
 from dotenv import load_dotenv
-from datetime import datetime
 import os
 import json
 from datetime import datetime as dt
@@ -10,25 +9,14 @@ import uuid
 load_dotenv()
 
 redis = Redis(url=os.getenv("UPSTASH_REDIS_URL"), token=os.getenv("UPSTASH_REDIS_TOKEN"))
-SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", 3600))
+SESSION_TTL_SECONDS = int(float(os.getenv("SESSION_TTL_SECONDS", 300)))
 
-SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", "300"))
+session_json_template = {
+    "username": None,
+    "login_time": None,
+    "last_updated": None
+}
 
-# sessions are stored as json strings in redis
-def get_session(session_token):
-    session = redis.get(session_token)
-
-    if session is None:
-        return None
-
-    if isinstance(session, str):
-        session = json.loads(session)
-
-    if not isinstance(session, dict):
-        return None
-
-    return session
-  
 def _parse_session(raw):
     if raw is None:
         return None
@@ -37,16 +25,18 @@ def _parse_session(raw):
             return json.loads(raw)
         except Exception:
             return None
-    return raw
+    if isinstance(raw, dict):
+        return raw
+    return None
 
-def touch_session(session_token):
-    session = _parse_session(redis.get(session_token))
-    if session is None:
-        return None
-    return json.loads(session)
+# sessions are stored as json strings in redis
+def get_session(session_token):
+    session = redis.get(session_token)
+    return _parse_session(session)
 
 def save_session(session_token, session):
-    redis.set(session_token, json.dumps(session))
+    ttl = int(float(os.getenv("SESSION_TTL_SECONDS", 300)))
+    redis.set(session_token, json.dumps(session), ex=ttl)
 
 def touch_session(session_token):
     session = get_session(session_token)
@@ -56,7 +46,6 @@ def touch_session(session_token):
     ttl = int(float(os.getenv("SESSION_TTL_SECONDS", 300)))
     redis.set(session_token, json.dumps(session), ex=ttl)
     return True
-
 
 def create_session(username):
     now_iso = dt.now().isoformat()
@@ -69,9 +58,8 @@ def create_session(username):
     redis.set(session_token, json.dumps(new_session), ex=ttl)
     return session_token
 
-
 def validate_session(session_token):
-    session = _parse_session(redis.get(session_token))
+    session = get_session(session_token)
     if session is None:
         return False
     
@@ -88,9 +76,7 @@ def validate_session(session_token):
             return False
 
     touch_session(session_token)
-
     return session
-
 
 def delete_session(session_token):
     if get_session(session_token) is None:
@@ -99,15 +85,15 @@ def delete_session(session_token):
     redis.delete(session_token)
     return True
 
-
 def update_session(session_token, data):
-    session = _parse_session(redis.get(session_token))
+    session = get_session(session_token)
     if session is None:
         return False
 
     session.update(data)
+    session["last_updated"] = dt.now().isoformat()
     ttl = int(float(os.getenv("SESSION_TTL_SECONDS", 300)))
     redis.set(session_token, json.dumps(session), ex=ttl)
-    touch_session(session_token)
     return True
+
 

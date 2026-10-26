@@ -11,18 +11,26 @@ export default function Login({ onLoginSuccess }) {
     e.preventDefault()
     setMessage(null)
 
-    const result = await api.login(username, password)
-    if (result.success) {
-      localStorage.setItem('session_token', result.session_token)
-      setMessage({ type: 'success', text: 'Login successful!' })
-      if (onLoginSuccess) {
-        onLoginSuccess({
-          session_token: result.session_token,
-          username: result.username
-        })
+    try {
+      const result = await api.login(username, password)
+      if (result.success) {
+        localStorage.setItem('session_token', result.session_token)
+        setMessage({ type: 'success', text: 'Login successful!' })
+        if (onLoginSuccess) {
+          onLoginSuccess({
+            session_token: result.session_token,
+            username: result.username
+          })
+        }
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Login failed' })
       }
-    } else {
-      setMessage({ type: 'error', text: result.error})
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        'Unable to log in. Please check your connection and try again.'
+      setMessage({ type: 'error', text: errorMsg })
     }
   }
 
