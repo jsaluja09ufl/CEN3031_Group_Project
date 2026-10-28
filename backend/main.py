@@ -5,7 +5,7 @@ import os
 from database.access_db import SupabaseConnect
 import password_handler
 import redis
-from models import EventCreate
+from models import EventCreate, EventCompletionUpdate
 from fastapi.middleware.cors import CORSMiddleware
 from habit_tasks import router as habit_tasks_router
 
@@ -77,6 +77,18 @@ def get_events(session_token: str = Header()):
         return {"success": False, "error": "Invalid session"}
     return {"success": True, "events": supabase_client.get_events(session["username"])}
 
+
+
+@app.put("/events/{event_id}/completion")
+def update_event_completion(event_id: int, completion: EventCompletionUpdate, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+
+    updated = supabase_client.update_event_completion(session["username"], event_id, completion)
+    if updated is None:
+        return {"success": False, "error": "Could not update completion details"}
+    return {"success": True, "event": updated}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=os.getenv("HOST"), port=int(os.getenv("PORT")), reload=True)

@@ -19,3 +19,13 @@ class EventCreate(BaseModel):
         if self.end_time <= self.start_time:
             raise ValueError("End time must be after start time")
         return self
+
+
+class EventCompletionUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    completed: bool = True
+    difficulty: Optional[str] = Field(default=None, max_length=50)
+    completion_time_minutes: Optional[int] = Field(default=None, ge=0)
+    completion_notes: Optional[str] = Field(default=None, max_length=1000)
+    completed_at: Optional[datetime] = None

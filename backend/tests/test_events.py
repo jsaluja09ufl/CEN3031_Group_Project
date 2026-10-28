@@ -107,3 +107,37 @@ def test_get_events(logged_in):
         res = client.get("/events", headers=HEADERS)
     assert res.json() == {"success": True, "events": events}
     mock_get.assert_called_once_with("testuser")
+
+
+def test_update_event_completion_success(logged_in):
+    updated = {
+        "event_id": 1,
+        "title": "Study for exam",
+        "completed": True,
+        "difficulty": "Medium",
+        "completion_time_minutes": 45,
+        "completion_notes": "Completed smoothly"
+    }
+    payload = {
+        "completed": True,
+        "difficulty": "Medium",
+        "completion_time_minutes": 45,
+        "completion_notes": "Completed smoothly"
+    }
+    with patch.object(main.supabase_client, "update_event_completion", return_value=updated) as mock_update:
+        res = client.put("/events/1/completion", json=payload, headers=HEADERS)
+    assert res.status_code == 200
+    assert res.json() == {"success": True, "event": updated}
+    assert mock_update.call_args[0][0] == "testuser"
+    assert mock_update.call_args[0][1] == 1
+
+
+def test_update_event_completion_invalid_session():
+    with patch.object(main.redis, "validate_session", return_value=False):
+        res = client.put("/events/1/completion", json={"completed": True}, headers=HEADERS)
+    assert res.json() == {"success": False, "error": "Invalid session"}
+
+
+def test_update_event_completion_negative_time(logged_in):
+    res = client.put("/events/1/completion", json={"completion_time_minutes": -5}, headers=HEADERS)
+    assert res.status_code == 422

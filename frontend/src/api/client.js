@@ -63,6 +63,13 @@ export const api = {
   getEvents: async (session_token) => {
     const res = await apiClient.get('/events', { headers: { 'session-token': session_token } });
     return res.data;
+  },
+
+  updateEventCompletion: async (session_token, event_id, completion) => {
+    const res = await apiClient.put(`/events/${event_id}/completion`, completion, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
   }
 };
 

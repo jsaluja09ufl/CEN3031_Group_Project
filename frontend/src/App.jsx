@@ -71,7 +71,7 @@ function App() {
           <EventForm onEventCreated={loadEvents} />
           <h2>Your Events</h2>
           <EventList events={events} />
-          <Home username={currentUser} />
+          <Home username={currentUser} events={events} onEventUpdated={loadEvents} />
           <button
             type="button"
             className="btn-submit"

@@ -24,5 +24,10 @@ CREATE TABLE events (
     start_time timestamp NOT NULL,
     end_time timestamp NOT NULL,
     created_at timestamp DEFAULT current_timestamp,
+    completed boolean DEFAULT FALSE,
+    difficulty text,
+    completion_time_minutes integer,
+    completion_notes text,
+    completed_at timestamp,
     CHECK (end_time > start_time)
 );
