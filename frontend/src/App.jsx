@@ -8,11 +8,15 @@ import EventForm from './components/EventForm'
 import EventList from './components/EventList'
 import { api } from './api/client'
 import Home from './components/Home'
+import GroupSpaceBrowse from './components/GroupSpaceBrowse'
+import GroupSpaceCreationForm from './components/GroupSpaceCreationForm'
+import GroupSpaceView from './components/GroupSpaceView'
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [view, setView] = useState('login')
   const [events, setEvents] = useState([])
+  const [selectedGroupSpace, setSelectedGroupSpace] = useState(null)
 
   const loadEvents = () => {
     api.getEvents(localStorage.getItem('session_token'))
@@ -72,22 +76,61 @@ function App() {
           <h2>Your Events</h2>
           <EventList events={events} />
           <Home username={currentUser} />
-          <button
-            type="button"
-            className="btn-submit"
-            onClick={() => setView('habitTasks')}
-          >
-            Habits & Tasks
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+            <button
+              type="button"
+              className="btn-submit"
+              onClick={() => setView('groupSpaces')}
+            >
+              Group Spaces
+            </button>
+            <button
+              type="button"
+              className="btn-submit"
+              onClick={() => setView('habitTasks')}
+            >
+              Habits & Tasks
+            </button>
+          </div>
 
           <button
             type="button"
             className="btn-submit"
+            style={{ background: '#4b5563' }}
             onClick={handleLogout}
           >
             Log Out
           </button>
         </div>
+      )}
+
+      {view === 'groupSpaces' && (
+        <GroupSpaceBrowse
+          currentUser={currentUser}
+          onBack={() => setView('home')}
+          onCreateClick={() => setView('createGroupSpace')}
+          onSelectSpace={(space) => {
+            setSelectedGroupSpace(space)
+            setView('groupSpaceView')
+          }}
+        />
+      )}
+
+      {view === 'createGroupSpace' && (
+        <GroupSpaceCreationForm
+          onCancel={() => setView('groupSpaces')}
+          onGroupSpaceCreated={() => {
+            setView('groupSpaces')
+          }}
+        />
+      )}
+
+      {view === 'groupSpaceView' && (
+        <GroupSpaceView
+          space={selectedGroupSpace}
+          currentUser={currentUser}
+          onBack={() => setView('groupSpaces')}
+        />
       )}
 
       {view === 'habitTasks' && (

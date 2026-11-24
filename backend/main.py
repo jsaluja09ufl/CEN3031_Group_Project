@@ -5,7 +5,7 @@ import os
 from database.access_db import SupabaseConnect
 import password_handler
 import redis
-from models import EventCreate
+from models import EventCreate, GroupSpaceCreate, GroupGoalCreate
 from fastapi.middleware.cors import CORSMiddleware
 from habit_tasks import router as habit_tasks_router
 
@@ -17,6 +17,7 @@ app.include_router(habit_tasks_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("FRONTEND_URL", "http://localhost:5173").split(","),
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,6 +78,47 @@ def get_events(session_token: str = Header()):
         return {"success": False, "error": "Invalid session"}
     return {"success": True, "events": supabase_client.get_events(session["username"])}
 
+@app.post("/group_spaces/create")
+def create_group_space(group: GroupSpaceCreate, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    result = supabase_client.create_group_space(session["username"], group.name, group.group_type)
+    if not result:
+        return {"success": False, "error": "Could not create group space"}
+    return {"success": True, "id": result["id"]}
+
+@app.get("/group_spaces/browse")
+@app.get("/group_space/browse")
+def get_group_spaces(session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    result = supabase_client.get_user_group_space(session["username"])
+    if result is None:
+        return {"success": False, "error": "Could not fetch group spaces"}
+    return {"success": True, "user_group_spaces": result}
+
+@app.post("/group_spaces/{group_id}/create_goal")
+def create_group_goal(group_id: int, goal: GroupGoalCreate, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.create_group_goal(
+        session["username"],
+        group_id,
+        goal.goal_name,
+        goal.goal_description,
+        goal.goal_scope,
+        goal.goal_deadline
+    )
+
+@app.get("/group_spaces/{group_id}/goals")
+def get_group_goals(group_id: int, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.get_group_goals(session["username"], group_id)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=os.getenv("HOST"), port=int(os.getenv("PORT")), reload=True)

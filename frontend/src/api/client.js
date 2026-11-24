@@ -63,6 +63,34 @@ export const api = {
   getEvents: async (session_token) => {
     const res = await apiClient.get('/events', { headers: { 'session-token': session_token } });
     return res.data;
+  },
+
+  createGroupSpace: async (session_token, group) => {
+    const res = await apiClient.post('/group_spaces/create', group, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  getUserGroupSpaces: async (session_token) => {
+    const res = await apiClient.get('/group_spaces/browse', {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  getGroupGoals: async (session_token, group_id) => {
+    const res = await apiClient.get(`/group_spaces/${group_id}/goals`, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  createGroupGoal: async (session_token, group_id, goal) => {
+    const res = await apiClient.post(`/group_spaces/${group_id}/create_goal`, goal, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
   }
 };
 

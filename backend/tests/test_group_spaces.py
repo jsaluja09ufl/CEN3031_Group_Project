@@ -1,0 +1,113 @@
+import os
+import sys
+from unittest.mock import patch
+
+import pytest
+
+pytest.importorskip("fastapi")
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+os.environ.setdefault("DATABASE_URL", "postgresql://test")
+os.environ.setdefault("UPSTASH_REDIS_URL", "https://test.upstash.io")
+os.environ.setdefault("UPSTASH_REDIS_TOKEN", "test")
+os.environ.setdefault("PASSWORD_SECRET_PEPPER", "test")
+
+from fastapi.testclient import TestClient
+
+with patch("psycopg.connect"):
+    import main
+
+client = TestClient(main.app)
+HEADERS = {"session-token": "test-token"}
+
+
+@pytest.fixture
+def logged_in():
+    with patch.object(main.redis, "validate_session", return_value={"username": "testuser"}):
+        yield
+
+
+def test_create_group_space_success(logged_in):
+    mock_result = {"id": 1}
+    with patch.object(main.supabase_client, "create_group_space", return_value=mock_result) as mock_create:
+        res = client.post("/group_spaces/create", json={"name": "Study Group", "group_type": 0}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": True, "id": 1}
+    mock_create.assert_called_once_with("testuser", "Study Group", 0)
+
+
+def test_create_group_space_default_type(logged_in):
+    mock_result = {"id": 2}
+    with patch.object(main.supabase_client, "create_group_space", return_value=mock_result) as mock_create:
+        res = client.post("/group_spaces/create", json={"name": "Gaming Club"}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": True, "id": 2}
+    mock_create.assert_called_once_with("testuser", "Gaming Club", 0)
+
+
+def test_create_group_space_invalid_session():
+    with patch.object(main.redis, "validate_session", return_value=False):
+        res = client.post("/group_spaces/create", json={"name": "Test Group"}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": False, "error": "Invalid session"}
+
+
+def test_create_group_space_missing_header():
+    res = client.post("/group_spaces/create", json={"name": "Test Group"})
+    assert res.status_code == 422
+
+
+@pytest.mark.parametrize("bad_payload", [
+    {},
+    {"name": ""},
+    {"name": "   "},
+    {"name": "Valid Name", "group_type": 5},
+])
+def test_create_group_space_invalid_payload(logged_in, bad_payload):
+    res = client.post("/group_spaces/create", json=bad_payload, headers=HEADERS)
+    assert res.status_code == 422
+
+
+def test_create_group_space_db_error(logged_in):
+    with patch.object(main.supabase_client, "create_group_space", return_value=None):
+        res = client.post("/group_spaces/create", json={"name": "Failing Group"}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": False, "error": "Could not create group space"}
+
+
+def test_browse_group_spaces(logged_in):
+    mock_spaces = [{"id": 1, "name": "Team Space", "group_type": 0, "owner_user": "testuser"}]
+    with patch.object(main.supabase_client, "get_user_group_space", return_value=mock_spaces):
+        res = client.get("/group_spaces/browse", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": True, "user_group_spaces": mock_spaces}
+
+
+def test_create_group_goal(logged_in):
+    mock_res = {"success": True, "goal_id": 10}
+    with patch.object(main.supabase_client, "create_group_goal", return_value=mock_res) as mock_create:
+        res = client.post(
+            "/group_spaces/1/goals",
+            json={"goal_name": "Finish Sprint 1", "goal_description": "Complete tasks", "goal_scope": "EVERYONE"},
+            headers=HEADERS
+        )
+
+    assert res.status_code == 200
+    assert res.json() == {"success": True, "goal_id": 10}
+    mock_create.assert_called_once()
+
+
+def test_get_group_goals(logged_in):
+    mock_goals = {"success": True, "goals": [{"goal_id": 10, "goal_name": "Finish Sprint 1"}]}
+    with patch.object(main.supabase_client, "get_group_goals", return_value=mock_goals):
+        res = client.get("/group_spaces/1/goals", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_goals
+
+
