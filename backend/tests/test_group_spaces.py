@@ -92,7 +92,7 @@ def test_create_group_goal(logged_in):
     mock_res = {"success": True, "goal_id": 10}
     with patch.object(main.supabase_client, "create_group_goal", return_value=mock_res) as mock_create:
         res = client.post(
-            "/group_spaces/1/goals",
+            "/group_spaces/1/create_goal",
             json={"goal_name": "Finish Sprint 1", "goal_description": "Complete tasks", "goal_scope": "EVERYONE"},
             headers=HEADERS
         )
@@ -109,5 +109,56 @@ def test_get_group_goals(logged_in):
 
     assert res.status_code == 200
     assert res.json() == mock_goals
+
+
+def test_get_group_members_success(logged_in):
+    mock_members = {
+        "success": True,
+        "members": [
+            {"username": "testuser", "is_admin": True, "is_owner": True},
+            {"username": "member1", "is_admin": False, "is_owner": False}
+        ]
+    }
+    with patch.object(main.supabase_client, "get_group_member_list", return_value=mock_members) as mock_get:
+        res = client.get("/group_spaces/1/members", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_members
+    mock_get.assert_called_once_with("testuser", 1)
+
+
+def test_get_group_members_invalid_session():
+    with patch.object(main.redis, "validate_session", return_value=False):
+        res = client.get("/group_spaces/1/members", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": False, "error": "Invalid session"}
+
+
+def test_add_group_admin_success(logged_in):
+    mock_res = {"success": True, "message": "Admin added successfully"}
+    with patch.object(main.supabase_client, "add_group_space_admin", return_value=mock_res) as mock_add:
+        res = client.post("/group_spaces/1/add_admin", json={"username": "member1"}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_add.assert_called_once_with("testuser", 1, "member1")
+
+
+def test_add_group_admin_via_query_param(logged_in):
+    mock_res = {"success": True, "message": "Admin added successfully"}
+    with patch.object(main.supabase_client, "add_group_space_admin", return_value=mock_res) as mock_add:
+        res = client.post("/group_spaces/1/add_admin?add_username=member1", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_add.assert_called_once_with("testuser", 1, "member1")
+
+
+def test_add_group_admin_missing_username(logged_in):
+    res = client.post("/group_spaces/1/add_admin", json={}, headers=HEADERS)
+    assert res.status_code == 200
+    assert res.json() == {"success": False, "error": "Username is required"}
+
 
 

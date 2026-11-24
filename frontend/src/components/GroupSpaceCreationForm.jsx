@@ -45,7 +45,6 @@ export default function GroupSpaceCreationForm({ onGroupSpaceCreated, onCancel }
         localStorage.setItem('current_space_id', result.id)
         localStorage.setItem('current_space_name', form.group_name.trim())
         localStorage.setItem('current_space_type', Number(form.group_type) === 1 ? 'Public' : 'Private')
-        localStorage.setItem('is_admin', 'true')
         setForm(emptyForm)
         if (onGroupSpaceCreated) onGroupSpaceCreated(result)
       } else {

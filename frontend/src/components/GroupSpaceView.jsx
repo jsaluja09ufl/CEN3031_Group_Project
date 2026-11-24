@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import GroupGoals from './GroupGoals'
+import GroupViewMembership from './GroupViewMembership'
 
 export default function GroupSpaceView({
   space,
@@ -6,14 +8,20 @@ export default function GroupSpaceView({
   currentUser,
   events = []
 }) {
+  const effectiveUser = currentUser || localStorage.getItem('username')
+  const isOwner = Boolean(space && effectiveUser && space.owner_user === effectiveUser)
+  const initialAdmin = Boolean(isOwner || space?.is_admin)
+
+  const [isAdmin, setIsAdmin] = useState(initialAdmin)
+
+  useEffect(() => {
+    setIsAdmin(Boolean(isOwner || space?.is_admin))
+  }, [space, effectiveUser, isOwner])
+
   const currentSpaceName = space?.name || localStorage.getItem('current_space_name')
   const currentSpaceType = space
     ? (space.group_type === 1 ? 'Public' : 'Private')
     : (localStorage.getItem('current_space_type') || 'Private')
-  
-  // Check if owner or admin in localStorage
-  const isAdmin = (space && currentUser && space.owner_user === currentUser) || 
-                  localStorage.getItem('is_admin') === 'true'
 
   if (!currentSpaceName) {
     return (
@@ -61,6 +69,13 @@ export default function GroupSpaceView({
       <GroupGoals
         groupId={space?.id || Number(localStorage.getItem('current_space_id'))}
         isAdmin={isAdmin}
+      />
+
+      <GroupViewMembership
+        groupId={space?.id || Number(localStorage.getItem('current_space_id'))}
+        isAdmin={isAdmin}
+        currentUser={currentUser}
+        onRoleDetermined={(adminStatus) => setIsAdmin(adminStatus)}
       />
     </div>
   )

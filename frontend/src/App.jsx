@@ -46,6 +46,11 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('session_token')
+    localStorage.removeItem('username')
+    localStorage.removeItem('is_admin')
+    localStorage.removeItem('current_space_id')
+    localStorage.removeItem('current_space_name')
+    localStorage.removeItem('current_space_type')
     setCurrentUser(null)
     setView('login')
   }

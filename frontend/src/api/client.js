@@ -91,7 +91,23 @@ export const api = {
       headers: { 'session-token': session_token }
     });
     return res.data;
+  },
+
+  getGroupMembers: async (session_token, group_id) => {
+    const res = await apiClient.get(`/group_spaces/${group_id}/members`, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  addGroupAdmin: async (session_token, group_id, username) => {
+    const res = await apiClient.post(`/group_spaces/${group_id}/add_admin`, { username }, {
+      headers: { 'session-token': session_token },
+      params: { add_username: username }
+    });
+    return res.data;
   }
 };
 
-export default apiClient;
+export default api;
+export { apiClient };

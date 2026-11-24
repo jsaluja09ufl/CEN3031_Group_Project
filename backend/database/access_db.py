@@ -122,13 +122,18 @@ class SupabaseConnect:
             self.connection.rollback()
             cursor.execute(
                 """
-                SELECT gs.id, gs.name, gs.group_type, gs.owner_user
+                SELECT 
+                    gs.id, 
+                    gs.name, 
+                    gs.group_type, 
+                    gs.owner_user,
+                    (gs.owner_user = %s OR %s = ANY(COALESCE(gs.admin_list, '{}'))) AS is_admin
                 FROM group_spaces gs
                 JOIN group_space_membership gsm ON gs.id = gsm.group_id
                 WHERE gsm.username = %s
                 ORDER BY gs.id DESC
                 """,
-                (username,)
+                (username, username, username)
             )
             columns = [col.name for col in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -196,6 +201,94 @@ class SupabaseConnect:
                 self.connection.commit()
                 return {"success": False, "error": "Could not fetch group goals"}
 
+    def get_group_member_list(self, access_username, group_id):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_spaces gs
+                    LEFT JOIN group_space_membership gsm ON gs.id = gsm.group_id
+                    WHERE gs.id = %s AND (gs.owner_user = %s OR gsm.username = %s)
+                    """,
+                    (group_id, access_username, access_username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "You must be a member of this group space to view members"}
+                
+                cursor.execute(
+                    """
+                    SELECT 
+                        m.username,
+                        (gs.owner_user = m.username OR m.username = ANY(COALESCE(gs.admin_list, '{}'))) AS is_admin,
+                        (gs.owner_user = m.username) AS is_owner
+                    FROM (
+                        SELECT username FROM group_space_membership WHERE group_id = %s
+                        UNION
+                        SELECT owner_user AS username FROM group_spaces WHERE id = %s
+                    ) m
+                    JOIN group_spaces gs ON gs.id = %s
+                    ORDER BY is_owner DESC, is_admin DESC, m.username ASC
+                    """,
+                    (group_id, group_id, group_id)
+                )
+                columns = [col.name for col in cursor.description]
+                members = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                return {"success": True, "members": members}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not fetch group members"}
 
-    
-    
+    def add_group_space_admin(self, access_username, group_id, add_username):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_spaces
+                    WHERE id = %s AND (owner_user = %s OR %s = ANY(COALESCE(admin_list, '{}')))
+                    """,
+                    (group_id, access_username, access_username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "You must be an admin to take this action"}
+                
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_space_membership WHERE group_id = %s AND username = %s
+                    """,
+                    (group_id, add_username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "The user you intend to add must be a group member already"}
+
+                # Check if user is already an admin
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_spaces
+                    WHERE id = %s AND (owner_user = %s OR %s = ANY(COALESCE(admin_list, '{}')))
+                    """,
+                    (group_id, add_username, add_username)
+                )
+                if cursor.fetchone():
+                    return {"success": True, "message": "User is already an admin"}
+                
+                cursor.execute(
+                    """
+                    UPDATE group_spaces
+                    SET admin_list = array_append(COALESCE(admin_list, '{}'), %s)
+                    WHERE id = %s
+                    """,
+                    (add_username, group_id)
+                )
+                self.connection.commit()
+                return {"success": True, "message": "Admin added successfully"}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not add admin"}

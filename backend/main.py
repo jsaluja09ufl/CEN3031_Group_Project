@@ -1,11 +1,12 @@
 import uvicorn
+from typing import Optional
 from fastapi import FastAPI, Header
 from dotenv import load_dotenv
 import os
 from database.access_db import SupabaseConnect
 import password_handler
 import redis
-from models import EventCreate, GroupSpaceCreate, GroupGoalCreate
+from models import EventCreate, GroupSpaceCreate, GroupGoalCreate, AddAdminRequest
 from fastapi.middleware.cors import CORSMiddleware
 from habit_tasks import router as habit_tasks_router
 
@@ -119,6 +120,28 @@ def get_group_goals(group_id: int, session_token: str = Header()):
     if not session:
         return {"success": False, "error": "Invalid session"}
     return supabase_client.get_group_goals(session["username"], group_id)
+
+@app.get("/group_spaces/{group_id}/members")
+def get_group_members(group_id: int, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.get_group_member_list(session["username"], group_id)
+
+@app.post("/group_spaces/{group_id}/add_admin")
+def add_group_admin(
+    group_id: int,
+    request: Optional[AddAdminRequest] = None,
+    add_username: Optional[str] = None,
+    session_token: str = Header()
+):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    target_user = request.username if (request and request.username) else add_username
+    if not target_user:
+        return {"success": False, "error": "Username is required"}
+    return supabase_client.add_group_space_admin(session["username"], group_id, target_user)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=os.getenv("HOST"), port=int(os.getenv("PORT")), reload=True)

@@ -43,3 +43,9 @@ class GroupGoalCreate(BaseModel):
             return None
         return v
 
+
+class AddAdminRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    username: Optional[str] = None
+
