@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
 
-export default function GroupViewMembership({ groupId, isAdmin, currentUser, onRoleDetermined }) {
+export default function GroupViewMembership({ groupId, groupType, isAdmin, currentUser, onRoleDetermined }) {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState(null)
   const [promotingUser, setPromotingUser] = useState(null)
+  const [inviteUsername, setInviteUsername] = useState('')
+  const [inviting, setInviting] = useState(false)
 
   const token = localStorage.getItem('session_token')
   const effectiveUsername = currentUser || localStorage.getItem('username')
@@ -62,6 +64,32 @@ export default function GroupViewMembership({ groupId, isAdmin, currentUser, onR
     }
   }
 
+  const handleInvite = async (e) => {
+    e.preventDefault()
+    if (!inviteUsername.trim()) {
+      setMessage({ type: 'error', text: 'Username is required' })
+      return
+    }
+    if (!token || !groupId) return
+
+    setInviting(true)
+    setMessage(null)
+    try {
+      const res = await api.inviteToGroup(token, groupId, inviteUsername.trim())
+      if (res.success) {
+        setMessage({ type: 'success', text: `Invite sent to ${inviteUsername.trim()}!` })
+        setInviteUsername('')
+      } else {
+        setMessage({ type: 'error', text: res.error || res.message || 'Failed to send invite' })
+      }
+    } catch (err) {
+      console.error('Failed to send invite:', err)
+      setMessage({ type: 'error', text: err?.response?.data?.error || err?.message || 'Network error sending invite' })
+    } finally {
+      setInviting(false)
+    }
+  }
+
   return (
     <div className="group-space-section">
       <div >
@@ -75,6 +103,20 @@ export default function GroupViewMembership({ groupId, isAdmin, currentUser, onR
         <div className={`message ${message.type}`}>
           {message.text}
         </div>
+      )}
+
+      {userIsAdmin && groupType === 0 && (
+        <form onSubmit={handleInvite} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          <input
+            type="text"
+            placeholder="Username to invite"
+            value={inviteUsername}
+            onChange={(e) => setInviteUsername(e.target.value)}
+          />
+          <button type="submit" className="btn-submit" style={{ width: 'auto', marginTop: 0 }} disabled={inviting}>
+            {inviting ? 'Inviting...' : 'Invite'}
+          </button>
+        </form>
       )}
 
       {loading ? (

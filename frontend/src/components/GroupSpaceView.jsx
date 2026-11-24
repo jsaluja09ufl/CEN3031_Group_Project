@@ -73,6 +73,7 @@ export default function GroupSpaceView({
 
       <GroupViewMembership
         groupId={space?.id || Number(localStorage.getItem('current_space_id'))}
+        groupType={space ? space.group_type : (currentSpaceType === 'Public' ? 1 : 0)}
         isAdmin={isAdmin}
         currentUser={currentUser}
         onRoleDetermined={(adminStatus) => setIsAdmin(adminStatus)}

@@ -146,6 +146,13 @@ class SupabaseConnect:
                 cursor.execute("SELECT 1 FROM group_spaces WHERE id = %s AND (%s = owner_user OR %s = ANY(admin_list))", (group_id, access_username, access_username))
                 if cursor.fetchone() is None:
                     return {"success": False, "message": "You do not have permission to do this action"}
+                if goal_scope and goal_scope != "EVERYONE":
+                    cursor.execute(
+                        "SELECT 1 FROM group_space_membership WHERE group_id = %s AND username = %s",
+                        (group_id, goal_scope)
+                    )
+                    if cursor.fetchone() is None:
+                        return {"success": False, "error": "Goal can only be assigned to a member of this group space"}
                 cursor.execute(
                     """
                     INSERT INTO group_goals (group_id, goal_name, goal_description, goal_deadline, goal_scope)   
@@ -292,3 +299,102 @@ class SupabaseConnect:
                 cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
                 self.connection.commit()
                 return {"success": False, "error": "Could not add admin"}
+
+    def invite_user_to_group(self, access_username, group_id, invited_username):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT group_type FROM group_spaces
+                    WHERE id = %s AND (owner_user = %s OR %s = ANY(COALESCE(admin_list, '{}')))
+                    """,
+                    (group_id, access_username, access_username)
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return {"success": False, "error": "You must be an admin to invite users"}
+                if row[0] != 0:
+                    return {"success": False, "error": "Invites are only used for private group spaces"}
+
+                cursor.execute("SELECT 1 FROM user_details WHERE username = %s", (invited_username,))
+                if not cursor.fetchone():
+                    return {"success": False, "error": "User does not exist"}
+
+                cursor.execute(
+                    "SELECT 1 FROM group_space_membership WHERE group_id = %s AND username = %s",
+                    (group_id, invited_username)
+                )
+                if cursor.fetchone():
+                    return {"success": False, "error": "User is already a member of this group space"}
+
+                cursor.execute(
+                    """
+                    INSERT INTO group_invites (group_id, invited_username, invited_by)
+                    VALUES (%s, %s, %s) ON CONFLICT DO NOTHING
+                    """,
+                    (group_id, invited_username, access_username)
+                )
+                self.connection.commit()
+                return {"success": True, "message": "Invite sent"}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not send invite"}
+
+    def get_user_invites(self, username):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT gi.group_id, gs.name, gi.invited_by
+                    FROM group_invites gi
+                    JOIN group_spaces gs ON gs.id = gi.group_id
+                    WHERE gi.invited_username = %s
+                    ORDER BY gi.created_at DESC
+                    """,
+                    (username,)
+                )
+                columns = [col.name for col in cursor.description]
+                invites = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                return {"success": True, "invites": invites}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not fetch invites"}
+
+    def respond_to_invite(self, username, group_id, accept):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    "SELECT 1 FROM group_invites WHERE group_id = %s AND invited_username = %s",
+                    (group_id, username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "No invite found for this group space"}
+
+                if accept:
+                    cursor.execute(
+                        "INSERT INTO group_space_membership (group_id, username) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                        (group_id, username)
+                    )
+                cursor.execute(
+                    "DELETE FROM group_invites WHERE group_id = %s AND invited_username = %s",
+                    (group_id, username)
+                )
+                self.connection.commit()
+                if accept:
+                    return {"success": True, "message": "Joined group space"}
+                return {"success": True, "message": "Invite declined"}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not respond to invite"}

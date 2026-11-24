@@ -15,7 +15,7 @@ CREATE TABLE group_goals(
     group_id INT REFERENCES group_spaces(id) ON DELETE CASCADE,
     goal_id SERIAL,
     goal_name TEXT NOT NULL,
-    goal_description TEXT NOT NULL,
+    goal_description TEXT,
     goal_deadline timestamp,
     goal_scope TEXT DEFAULT 'EVERYONE',
     PRIMARY KEY (group_id, goal_id)
