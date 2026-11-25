@@ -8,11 +8,13 @@ import redis
 from models import EventCreate
 from fastapi.middleware.cors import CORSMiddleware
 from habit_tasks import router as habit_tasks_router
+from group_spaces import router as group_spaces_router
 
 load_dotenv()
 app = FastAPI()
 
 app.include_router(habit_tasks_router)
+app.include_router(group_spaces_router)
 
 app.add_middleware(
     CORSMiddleware,

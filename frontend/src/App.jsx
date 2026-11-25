@@ -4,6 +4,7 @@ import './App.css'
 import Login from './components/Login'
 import SignUp from './components/SignUp'
 import HabitTask from './features/habitTask/HabitTask'
+import GroupSpace from './features/groupSpace/GroupSpace'
 import EventForm from './components/EventForm'
 import EventList from './components/EventList'
 import { api } from './api/client'
@@ -83,10 +84,31 @@ function App() {
           <button
             type="button"
             className="btn-submit"
+            onClick={() => setView('groupSpaces')}
+          >
+            Group Spaces
+          </button>
+
+          <button
+            type="button"
+            className="btn-submit"
             onClick={handleLogout}
           >
             Log Out
           </button>
+        </div>
+      )}
+
+      {view === 'groupSpaces' && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setView('home')}
+          >
+            ← Back to Home
+          </button>
+
+          <GroupSpace currentUser={currentUser} />
         </div>
       )}
 

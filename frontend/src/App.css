@@ -124,6 +124,106 @@ textarea {
   color: #6b7280;
 }
 
+/* Group Spaces styles */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge-admin {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.badge-member {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #38bdf8;
+}
+
+.group-header-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.group-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+  padding: 0.4rem 0.8rem;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.tab-btn.active {
+  background: #2563eb;
+  color: white;
+}
+
+.group-card {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.group-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.group-card-header h4 {
+  margin: 0;
+}
+
+.group-task-list {
+  list-style: none;
+  padding: 0;
+}
+
+.group-task-item {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: white;
+}
+
+.group-task-item.completed {
+  background: #f9fafb;
+  opacity: 0.75;
+}
+
+.admin-notice {
+  padding: 0.6rem 0.8rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 500px) {
   .form-row {
     flex-direction: column;

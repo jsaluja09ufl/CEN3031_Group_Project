@@ -1,7 +1,7 @@
 
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL
@@ -62,6 +62,70 @@ export const api = {
 
   getEvents: async (session_token) => {
     const res = await apiClient.get('/events', { headers: { 'session-token': session_token } });
+    return res.data;
+  },
+
+  // PBI B — Group Spaces
+  getGroups: async (sessionToken) => {
+    const res = await apiClient.get('/groups', {
+      headers: { 'session-token': sessionToken, Authorization: `Bearer ${sessionToken}` }
+    });
+    return res.data;
+  },
+
+  createGroup: async (sessionToken, groupData) => {
+    const res = await apiClient.post('/groups', groupData, {
+      headers: { 'session-token': sessionToken, Authorization: `Bearer ${sessionToken}` }
+    });
+    return res.data;
+  },
+
+  getGroup: async (sessionToken, groupId) => {
+    const res = await apiClient.get(`/groups/${groupId}`, {
+      headers: { 'session-token': sessionToken, Authorization: `Bearer ${sessionToken}` }
+    });
+    return res.data;
+  },
+
+  addGroupMember: async (sessionToken, groupId, memberData) => {
+    const res = await apiClient.post(`/groups/${groupId}/members`, memberData, {
+      headers: { 'session-token': sessionToken, Authorization: `Bearer ${sessionToken}` }
+    });
+    return res.data;
+  },
+
+  getGroupTasks: async (sessionToken, groupId) => {
+    const res = await apiClient.get(`/groups/${groupId}/tasks`, {
+      headers: { 'session-token': sessionToken, Authorization: `Bearer ${sessionToken}` }
+    });
+    return res.data;
+  },
+
+  createGroupTask: async (sessionToken, groupId, taskData) => {
+    const res = await apiClient.post(`/groups/${groupId}/tasks`, taskData, {
+      headers: { 'session-token': sessionToken, Authorization: `Bearer ${sessionToken}` }
+    });
+    return res.data;
+  },
+
+  toggleGroupTask: async (sessionToken, groupId, taskId) => {
+    const res = await apiClient.patch(`/groups/${groupId}/tasks/${taskId}/toggle`, {}, {
+      headers: { 'session-token': sessionToken, Authorization: `Bearer ${sessionToken}` }
+    });
+    return res.data;
+  },
+
+  getGroupEvents: async (sessionToken, groupId) => {
+    const res = await apiClient.get(`/groups/${groupId}/events`, {
+      headers: { 'session-token': sessionToken, Authorization: `Bearer ${sessionToken}` }
+    });
+    return res.data;
+  },
+
+  createGroupEvent: async (sessionToken, groupId, eventData) => {
+    const res = await apiClient.post(`/groups/${groupId}/events`, eventData, {
+      headers: { 'session-token': sessionToken, Authorization: `Bearer ${sessionToken}` }
+    });
     return res.data;
   }
 };
