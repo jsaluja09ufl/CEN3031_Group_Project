@@ -6,7 +6,7 @@ import os
 from database.access_db import SupabaseConnect
 import password_handler
 import redis
-from models import EventCreate, GroupSpaceCreate, GroupGoalCreate, AddAdminRequest
+from models import EventCreate, GroupSpaceCreate, GroupGoalCreate, AddAdminRequest, GroupInviteRequest, InviteResponse
 from fastapi.middleware.cors import CORSMiddleware
 from habit_tasks import router as habit_tasks_router
 
@@ -142,6 +142,27 @@ def add_group_admin(
     if not target_user:
         return {"success": False, "error": "Username is required"}
     return supabase_client.add_group_space_admin(session["username"], group_id, target_user)
+
+@app.post("/group_spaces/{group_id}/invite")
+def invite_to_group(group_id: int, invite: GroupInviteRequest, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.invite_user_to_group(session["username"], group_id, invite.username)
+
+@app.get("/group_spaces/invites")
+def get_group_invites(session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.get_user_invites(session["username"])
+
+@app.post("/group_spaces/{group_id}/invite/respond")
+def respond_to_group_invite(group_id: int, response: InviteResponse, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.respond_to_invite(session["username"], group_id, response.accept)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=os.getenv("HOST"), port=int(os.getenv("PORT")), reload=True)

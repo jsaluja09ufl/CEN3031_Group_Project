@@ -106,6 +106,27 @@ export const api = {
       params: { add_username: username }
     });
     return res.data;
+  },
+
+  inviteToGroup: async (session_token, group_id, username) => {
+    const res = await apiClient.post(`/group_spaces/${group_id}/invite`, { username }, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  getGroupInvites: async (session_token) => {
+    const res = await apiClient.get('/group_spaces/invites', {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  respondToInvite: async (session_token, group_id, accept) => {
+    const res = await apiClient.post(`/group_spaces/${group_id}/invite/respond`, { accept }, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
   }
 };
 

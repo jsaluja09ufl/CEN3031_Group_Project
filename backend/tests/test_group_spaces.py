@@ -162,3 +162,103 @@ def test_add_group_admin_missing_username(logged_in):
 
 
 
+
+
+def test_invite_to_group_success(logged_in):
+    mock_res = {"success": True, "message": "Invite sent"}
+    with patch.object(main.supabase_client, "invite_user_to_group", return_value=mock_res) as mock_invite:
+        res = client.post("/group_spaces/1/invite", json={"username": "member2"}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_invite.assert_called_once_with("testuser", 1, "member2")
+
+
+def test_invite_to_group_invalid_session():
+    with patch.object(main.redis, "validate_session", return_value=False):
+        res = client.post("/group_spaces/1/invite", json={"username": "member2"}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": False, "error": "Invalid session"}
+
+
+@pytest.mark.parametrize("bad_payload", [
+    {},
+    {"username": ""},
+    {"username": "   "},
+])
+def test_invite_to_group_invalid_payload(logged_in, bad_payload):
+    res = client.post("/group_spaces/1/invite", json=bad_payload, headers=HEADERS)
+    assert res.status_code == 422
+
+
+def test_invite_to_group_not_admin(logged_in):
+    mock_res = {"success": False, "error": "You must be an admin to invite users"}
+    with patch.object(main.supabase_client, "invite_user_to_group", return_value=mock_res):
+        res = client.post("/group_spaces/1/invite", json={"username": "member2"}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+
+
+def test_get_group_invites(logged_in):
+    mock_res = {"success": True, "invites": [{"group_id": 1, "name": "Study Group", "invited_by": "owner1"}]}
+    with patch.object(main.supabase_client, "get_user_invites", return_value=mock_res) as mock_get:
+        res = client.get("/group_spaces/invites", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_get.assert_called_once_with("testuser")
+
+
+def test_accept_group_invite(logged_in):
+    mock_res = {"success": True, "message": "Joined group space"}
+    with patch.object(main.supabase_client, "respond_to_invite", return_value=mock_res) as mock_respond:
+        res = client.post("/group_spaces/1/invite/respond", json={"accept": True}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_respond.assert_called_once_with("testuser", 1, True)
+
+
+def test_decline_group_invite(logged_in):
+    mock_res = {"success": True, "message": "Invite declined"}
+    with patch.object(main.supabase_client, "respond_to_invite", return_value=mock_res) as mock_respond:
+        res = client.post("/group_spaces/1/invite/respond", json={"accept": False}, headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_respond.assert_called_once_with("testuser", 1, False)
+
+
+def test_respond_to_invite_missing_accept(logged_in):
+    res = client.post("/group_spaces/1/invite/respond", json={}, headers=HEADERS)
+    assert res.status_code == 422
+
+
+def test_create_group_goal_assigned_to_member(logged_in):
+    mock_res = {"success": True, "goal_id": 11}
+    with patch.object(main.supabase_client, "create_group_goal", return_value=mock_res) as mock_create:
+        res = client.post(
+            "/group_spaces/1/create_goal",
+            json={"goal_name": "Write report", "goal_description": "Draft section 2", "goal_scope": "member1"},
+            headers=HEADERS
+        )
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_create.assert_called_once_with("testuser", 1, "Write report", "Draft section 2", "member1", None)
+
+
+def test_create_group_goal_without_description(logged_in):
+    mock_res = {"success": True, "goal_id": 12}
+    with patch.object(main.supabase_client, "create_group_goal", return_value=mock_res) as mock_create:
+        res = client.post(
+            "/group_spaces/1/create_goal",
+            json={"goal_name": "Study for exam", "goal_scope": "EVERYONE"},
+            headers=HEADERS
+        )
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_create.assert_called_once_with("testuser", 1, "Study for exam", None, "EVERYONE", None)

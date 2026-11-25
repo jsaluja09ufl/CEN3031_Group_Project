@@ -15,6 +15,7 @@ export default function GroupGoals({ groupId, isAdmin }) {
   const [form, setForm] = useState(emptyGoalForm)
   const [message, setMessage] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [members, setMembers] = useState([])
 
   const token = localStorage.getItem('session_token')
 
@@ -35,8 +36,21 @@ export default function GroupGoals({ groupId, isAdmin }) {
     }
   }
 
+  const loadMembers = async () => {
+    if (!groupId || !token) return
+    try {
+      const res = await api.getGroupMembers(token, groupId)
+      if (res.success) {
+        setMembers(res.members || [])
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error loading group members' })
+    }
+  }
+
   useEffect(() => {
     loadGoals()
+    loadMembers()
   }, [groupId])
 
   const handleChange = (e) => {
@@ -144,6 +158,11 @@ export default function GroupGoals({ groupId, isAdmin }) {
               <label>Scope</label>
               <select name="goal_scope" value={form.goal_scope} onChange={handleChange}>
                 <option value="EVERYONE">Everyone</option>
+                {members.map((member) => (
+                  <option key={member.username} value={member.username}>
+                    {member.username}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -176,7 +195,7 @@ export default function GroupGoals({ groupId, isAdmin }) {
             <li key={goal.goal_id} className="event">
               <div>
                 <strong>{goal.goal_name}</strong>
-                : <span>{goal.goal_scope.toLowerCase()}</span>
+                : <span>{goal.goal_scope === 'EVERYONE' ? 'everyone' : `assigned to ${goal.goal_scope}`}</span>
               </div>
               {goal.goal_description && (
                 <p className="event-description">
