@@ -398,3 +398,207 @@ class SupabaseConnect:
                 cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
                 self.connection.commit()
                 return {"success": False, "error": "Could not respond to invite"}
+
+    def create_group_task(self, access_username, group_id, title, description=""):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_spaces
+                    WHERE id = %s AND (owner_user = %s OR %s = ANY(COALESCE(admin_list, '{}')))
+                    """,
+                    (group_id, access_username, access_username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "You must be an admin to create group tasks"}
+
+                cursor.execute(
+                    """
+                    INSERT INTO group_tasks (group_id, created_by, title, description)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING task_id, group_id, created_by, title, description, completed, created_at
+                    """,
+                    (group_id, access_username, title, description or "")
+                )
+                row = cursor.fetchone()
+                columns = [col.name for col in cursor.description]
+                task = dict(zip(columns, row))
+                if task.get("created_at"):
+                    task["created_at"] = task["created_at"].isoformat()
+                self.connection.commit()
+                return {"success": True, "task": task, "task_id": task["task_id"]}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not create group task"}
+
+    def get_group_tasks(self, access_username, group_id):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_spaces gs
+                    LEFT JOIN group_space_membership gsm ON gs.id = gsm.group_id
+                    WHERE gs.id = %s AND (gs.owner_user = %s OR gsm.username = %s)
+                    """,
+                    (group_id, access_username, access_username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "You must be a member of this group space to view tasks"}
+
+                cursor.execute(
+                    """
+                    SELECT task_id, group_id, created_by, title, description, completed, created_at
+                    FROM group_tasks
+                    WHERE group_id = %s
+                    ORDER BY created_at DESC
+                    """,
+                    (group_id,)
+                )
+                columns = [col.name for col in cursor.description]
+                tasks = []
+                for row in cursor.fetchall():
+                    item = dict(zip(columns, row))
+                    if item.get("created_at"):
+                        item["created_at"] = item["created_at"].isoformat()
+                    tasks.append(item)
+                return {"success": True, "tasks": tasks}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not fetch group tasks"}
+
+    def toggle_group_task(self, access_username, group_id, task_id):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_spaces gs
+                    LEFT JOIN group_space_membership gsm ON gs.id = gsm.group_id
+                    WHERE gs.id = %s AND (gs.owner_user = %s OR gsm.username = %s)
+                    """,
+                    (group_id, access_username, access_username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "You must be a member of this group space to toggle tasks"}
+
+                cursor.execute(
+                    """
+                    UPDATE group_tasks
+                    SET completed = NOT completed
+                    WHERE task_id = %s AND group_id = %s
+                    RETURNING task_id, completed
+                    """,
+                    (task_id, group_id)
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return {"success": False, "error": "Task not found"}
+                self.connection.commit()
+                return {"success": True, "task": {"task_id": row[0], "completed": row[1]}}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not toggle group task"}
+
+    def create_group_event(self, access_username, group_id, event):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_spaces
+                    WHERE id = %s AND (owner_user = %s OR %s = ANY(COALESCE(admin_list, '{}')))
+                    """,
+                    (group_id, access_username, access_username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "You must be an admin to create group events"}
+
+                cursor.execute(
+                    """
+                    INSERT INTO group_events (group_id, created_by, title, description, category, priority, start_time, end_time)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING event_id, group_id, created_by, title, description, category, priority, start_time, end_time, created_at
+                    """,
+                    (
+                        group_id,
+                        access_username,
+                        event.title,
+                        event.description,
+                        event.category,
+                        event.priority,
+                        event.start_time,
+                        event.end_time
+                    )
+                )
+                row = cursor.fetchone()
+                columns = [col.name for col in cursor.description]
+                event_dict = dict(zip(columns, row))
+                if event_dict.get("start_time"):
+                    event_dict["start_time"] = event_dict["start_time"].isoformat()
+                if event_dict.get("end_time"):
+                    event_dict["end_time"] = event_dict["end_time"].isoformat()
+                if event_dict.get("created_at"):
+                    event_dict["created_at"] = event_dict["created_at"].isoformat()
+                self.connection.commit()
+                return {"success": True, "event": event_dict, "event_id": event_dict["event_id"]}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not create group event"}
+
+    def get_group_events(self, access_username, group_id):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_spaces gs
+                    LEFT JOIN group_space_membership gsm ON gs.id = gsm.group_id
+                    WHERE gs.id = %s AND (gs.owner_user = %s OR gsm.username = %s)
+                    """,
+                    (group_id, access_username, access_username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "You must be a member of this group space to view events"}
+
+                cursor.execute(
+                    """
+                    SELECT event_id, group_id, created_by, title, description, category, priority, start_time, end_time, created_at
+                    FROM group_events
+                    WHERE group_id = %s
+                    ORDER BY start_time ASC
+                    """,
+                    (group_id,)
+                )
+                columns = [col.name for col in cursor.description]
+                events = []
+                for row in cursor.fetchall():
+                    item = dict(zip(columns, row))
+                    if item.get("start_time"):
+                        item["start_time"] = item["start_time"].isoformat()
+                    if item.get("end_time"):
+                        item["end_time"] = item["end_time"].isoformat()
+                    if item.get("created_at"):
+                        item["created_at"] = item["created_at"].isoformat()
+                    events.append(item)
+                return {"success": True, "events": events}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not fetch group events"}
+

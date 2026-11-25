@@ -1,7 +1,7 @@
 
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL
@@ -124,6 +124,42 @@ export const api = {
 
   respondToInvite: async (session_token, group_id, accept) => {
     const res = await apiClient.post(`/group_spaces/${group_id}/invite/respond`, { accept }, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  // PBI-B: Group Space Tasks and Events (Admin creation & viewing)
+  getGroupTasks: async (session_token, group_id) => {
+    const res = await apiClient.get(`/group_spaces/${group_id}/tasks`, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  createGroupTask: async (session_token, group_id, task) => {
+    const res = await apiClient.post(`/group_spaces/${group_id}/tasks`, task, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  toggleGroupTask: async (session_token, group_id, task_id) => {
+    const res = await apiClient.patch(`/group_spaces/${group_id}/tasks/${task_id}/toggle`, {}, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  getGroupEvents: async (session_token, group_id) => {
+    const res = await apiClient.get(`/group_spaces/${group_id}/events`, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  createGroupEvent: async (session_token, group_id, event) => {
+    const res = await apiClient.post(`/group_spaces/${group_id}/events`, event, {
       headers: { 'session-token': session_token }
     });
     return res.data;
