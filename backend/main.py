@@ -6,7 +6,16 @@ import os
 from database.access_db import SupabaseConnect
 import password_handler
 import redis
-from models import EventCreate, GroupSpaceCreate, GroupGoalCreate, AddAdminRequest, GroupInviteRequest, InviteResponse
+from models import (
+    EventCreate,
+    GroupSpaceCreate,
+    GroupGoalCreate,
+    AddAdminRequest,
+    GroupInviteRequest,
+    InviteResponse,
+    GroupTaskCreate,
+    GroupEventCreate
+)
 from fastapi.middleware.cors import CORSMiddleware
 from habit_tasks import router as habit_tasks_router
 
@@ -163,6 +172,47 @@ def respond_to_group_invite(group_id: int, response: InviteResponse, session_tok
     if not session:
         return {"success": False, "error": "Invalid session"}
     return supabase_client.respond_to_invite(session["username"], group_id, response.accept)
+
+
+@app.post("/group_spaces/{group_id}/tasks")
+def create_group_task(group_id: int, task: GroupTaskCreate, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.create_group_task(session["username"], group_id, task.title, task.description)
+
+
+@app.get("/group_spaces/{group_id}/tasks")
+def get_group_tasks(group_id: int, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.get_group_tasks(session["username"], group_id)
+
+
+@app.patch("/group_spaces/{group_id}/tasks/{task_id}/toggle")
+def toggle_group_task(group_id: int, task_id: int, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.toggle_group_task(session["username"], group_id, task_id)
+
+
+@app.post("/group_spaces/{group_id}/events")
+def create_group_event(group_id: int, event: GroupEventCreate, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.create_group_event(session["username"], group_id, event)
+
+
+@app.get("/group_spaces/{group_id}/events")
+def get_group_events(group_id: int, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.get_group_events(session["username"], group_id)
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=os.getenv("HOST"), port=int(os.getenv("PORT")), reload=True)

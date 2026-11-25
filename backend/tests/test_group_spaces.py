@@ -262,3 +262,162 @@ def test_create_group_goal_without_description(logged_in):
     assert res.status_code == 200
     assert res.json() == mock_res
     mock_create.assert_called_once_with("testuser", 1, "Study for exam", None, "EVERYONE", None)
+
+
+def test_admin_create_group_task_success(logged_in):
+    mock_task = {
+        "success": True,
+        "task_id": 101,
+        "task": {
+            "task_id": 101,
+            "group_id": 1,
+            "created_by": "testuser",
+            "title": "Complete PBI-B integration",
+            "description": "Admins can create/view tasks and events",
+            "completed": False,
+            "created_at": "2026-11-24T22:00:00"
+        }
+    }
+    with patch.object(main.supabase_client, "create_group_task", return_value=mock_task) as mock_create:
+        res = client.post(
+            "/group_spaces/1/tasks",
+            json={"title": "Complete PBI-B integration", "description": "Admins can create/view tasks and events"},
+            headers=HEADERS
+        )
+    assert res.status_code == 200
+    assert res.json() == mock_task
+    mock_create.assert_called_once_with("testuser", 1, "Complete PBI-B integration", "Admins can create/view tasks and events")
+
+
+def test_non_admin_create_group_task_forbidden(logged_in):
+    mock_err = {"success": False, "error": "You must be an admin to create group tasks"}
+    with patch.object(main.supabase_client, "create_group_task", return_value=mock_err):
+        res = client.post(
+            "/group_spaces/1/tasks",
+            json={"title": "Unauthorized task", "description": "Should fail"},
+            headers=HEADERS
+        )
+    assert res.status_code == 200
+    assert res.json()["success"] is False
+    assert "admin" in res.json()["error"]
+
+
+def test_view_group_tasks(logged_in):
+    mock_tasks = {
+        "success": True,
+        "tasks": [
+            {
+                "task_id": 101,
+                "group_id": 1,
+                "created_by": "testuser",
+                "title": "Complete PBI-B integration",
+                "description": "Admins can create/view tasks and events",
+                "completed": False,
+                "created_at": "2026-11-24T22:00:00"
+            }
+        ]
+    }
+    with patch.object(main.supabase_client, "get_group_tasks", return_value=mock_tasks) as mock_get:
+        res = client.get("/group_spaces/1/tasks", headers=HEADERS)
+    assert res.status_code == 200
+    assert res.json() == mock_tasks
+    mock_get.assert_called_once_with("testuser", 1)
+
+
+def test_toggle_group_task(logged_in):
+    mock_toggle = {"success": True, "task": {"task_id": 101, "completed": True}}
+    with patch.object(main.supabase_client, "toggle_group_task", return_value=mock_toggle) as mock_toggle_fn:
+        res = client.patch("/group_spaces/1/tasks/101/toggle", headers=HEADERS)
+    assert res.status_code == 200
+    assert res.json() == mock_toggle
+    mock_toggle_fn.assert_called_once_with("testuser", 1, 101)
+
+
+def test_admin_create_group_event_success(logged_in):
+    mock_event = {
+        "success": True,
+        "event_id": 201,
+        "event": {
+            "event_id": 201,
+            "group_id": 1,
+            "created_by": "testuser",
+            "title": "Sprint Review",
+            "description": "Review PBI deliverables",
+            "category": "Project",
+            "priority": "high",
+            "start_time": "2026-11-25T14:00:00",
+            "end_time": "2026-11-25T15:00:00",
+            "created_at": "2026-11-24T22:00:00"
+        }
+    }
+    with patch.object(main.supabase_client, "create_group_event", return_value=mock_event) as mock_create:
+        res = client.post(
+            "/group_spaces/1/events",
+            json={
+                "title": "Sprint Review",
+                "description": "Review PBI deliverables",
+                "category": "Project",
+                "priority": "high",
+                "start_time": "2026-11-25T14:00:00",
+                "end_time": "2026-11-25T15:00:00"
+            },
+            headers=HEADERS
+        )
+    assert res.status_code == 200
+    assert res.json() == mock_event
+    mock_create.assert_called_once()
+
+
+def test_non_admin_create_group_event_forbidden(logged_in):
+    mock_err = {"success": False, "error": "You must be an admin to create group events"}
+    with patch.object(main.supabase_client, "create_group_event", return_value=mock_err):
+        res = client.post(
+            "/group_spaces/1/events",
+            json={
+                "title": "Sprint Review",
+                "priority": "medium",
+                "start_time": "2026-11-25T14:00:00",
+                "end_time": "2026-11-25T15:00:00"
+            },
+            headers=HEADERS
+        )
+    assert res.status_code == 200
+    assert res.json()["success"] is False
+    assert "admin" in res.json()["error"]
+
+
+def test_view_group_events(logged_in):
+    mock_events = {
+        "success": True,
+        "events": [
+            {
+                "event_id": 201,
+                "group_id": 1,
+                "created_by": "testuser",
+                "title": "Sprint Review",
+                "priority": "high",
+                "start_time": "2026-11-25T14:00:00",
+                "end_time": "2026-11-25T15:00:00"
+            }
+        ]
+    }
+    with patch.object(main.supabase_client, "get_group_events", return_value=mock_events) as mock_get:
+        res = client.get("/group_spaces/1/events", headers=HEADERS)
+    assert res.status_code == 200
+    assert res.json() == mock_events
+    mock_get.assert_called_once_with("testuser", 1)
+
+
+def test_create_group_event_invalid_times(logged_in):
+    res = client.post(
+        "/group_spaces/1/events",
+        json={
+            "title": "Bad Times Event",
+            "priority": "low",
+            "start_time": "2026-11-25T16:00:00",
+            "end_time": "2026-11-25T15:00:00"
+        },
+        headers=HEADERS
+    )
+    assert res.status_code == 422
+
