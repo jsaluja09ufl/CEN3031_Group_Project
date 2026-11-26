@@ -109,6 +109,29 @@ def get_group_spaces(session_token: str = Header()):
         return {"success": False, "error": "Could not fetch group spaces"}
     return {"success": True, "user_group_spaces": result}
 
+@app.get("/group_spaces/public")
+def get_public_group_spaces(session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+
+    result = supabase_client.get_public_group_spaces(session["username"])
+    if result is None:
+        return {"success": False, "error": "Could not fetch public group spaces"}
+
+    return {"success": True, "public_group_spaces": result}
+
+@app.post("/group_spaces/{group_id}/join")
+def join_public_group_space(group_id: int, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+
+    return supabase_client.join_public_group_space(
+        session["username"],
+        group_id
+    )
+
 @app.post("/group_spaces/{group_id}/create_goal")
 def create_group_goal(group_id: int, goal: GroupGoalCreate, session_token: str = Header()):
     session = redis.validate_session(session_token)

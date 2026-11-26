@@ -138,6 +138,61 @@ class SupabaseConnect:
             columns = [col.name for col in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
+    def get_public_group_spaces(self, username):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            cursor.execute(
+                """
+                SELECT gs.id, gs.name, gs.group_type, gs.owner_user
+                FROM group_spaces gs
+                WHERE gs.group_type = 1
+                AND gs.id NOT IN (
+                    SELECT group_id
+                    FROM group_space_membership
+                    WHERE username = %s
+                )
+                ORDER BY gs.id DESC
+                """,
+                (username,)
+            )
+            columns = [col.name for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def join_public_group_space(self, username, group_id):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    "SELECT 1 FROM group_spaces WHERE id = %s AND group_type = 1",
+                    (group_id,)
+                )
+
+                if cursor.fetchone() is None:
+                    return {"success": False, "error": "Public group space not found"}
+
+                cursor.execute(
+                    """
+                    INSERT INTO group_space_membership (group_id, username)
+                    VALUES (%s, %s)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (group_id, username)
+                )
+
+                if cursor.rowcount == 0:
+                    return {"success": False, "error": "You are already a member of this group space"}
+
+                self.connection.commit()
+                return {"success": True}
+
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not join group space"}
+
     def create_group_goal(self, access_username, group_id, goal_name, goal_description=None, goal_scope="EVERYONE", goal_deadline=None):
         self._ensure_connection()
         with self.connection.cursor() as cursor:
