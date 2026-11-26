@@ -130,6 +130,20 @@ def get_group_goals(group_id: int, session_token: str = Header()):
         return {"success": False, "error": "Invalid session"}
     return supabase_client.get_group_goals(session["username"], group_id)
 
+@app.get("/group_spaces/{group_id}/goals/progress")
+def get_group_goal_progress(group_id: int, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.get_group_goal_progress(session["username"], group_id)
+
+@app.patch("/group_spaces/{group_id}/goals/{goal_id}/toggle")
+def toggle_goal_completion(group_id: int, goal_id: int, session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.toggle_goal_completion(session["username"], group_id, goal_id)
+
 @app.get("/group_spaces/{group_id}/members")
 def get_group_members(group_id: int, session_token: str = Header()):
     session = redis.validate_session(session_token)

@@ -421,3 +421,52 @@ def test_create_group_event_invalid_times(logged_in):
     )
     assert res.status_code == 422
 
+
+
+def test_toggle_goal_completion(logged_in):
+    mock_res = {"success": True, "goal_id": 10, "completed": True}
+    with patch.object(main.supabase_client, "toggle_goal_completion", return_value=mock_res) as mock_toggle:
+        res = client.patch("/group_spaces/1/goals/10/toggle", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_toggle.assert_called_once_with("testuser", 1, 10)
+
+
+def test_toggle_goal_completion_invalid_session():
+    with patch.object(main.redis, "validate_session", return_value=False):
+        res = client.patch("/group_spaces/1/goals/10/toggle", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": False, "error": "Invalid session"}
+
+
+def test_get_goal_progress(logged_in):
+    mock_res = {
+        "success": True,
+        "progress": [
+            {
+                "goal_id": 10,
+                "completed_count": 1,
+                "total": 2,
+                "members": [
+                    {"username": "testuser", "completed": False},
+                    {"username": "member1", "completed": True}
+                ]
+            }
+        ]
+    }
+    with patch.object(main.supabase_client, "get_group_goal_progress", return_value=mock_res) as mock_get:
+        res = client.get("/group_spaces/1/goals/progress", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_get.assert_called_once_with("testuser", 1)
+
+
+def test_get_goal_progress_invalid_session():
+    with patch.object(main.redis, "validate_session", return_value=False):
+        res = client.get("/group_spaces/1/goals/progress", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": False, "error": "Invalid session"}

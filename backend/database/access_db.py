@@ -187,12 +187,15 @@ class SupabaseConnect:
 
                 cursor.execute(
                     """
-                    SELECT goal_id, goal_name, goal_description, goal_deadline, goal_scope
-                    FROM group_goals
-                    WHERE group_id = %s
-                    ORDER BY goal_id ASC
+                    SELECT gg.goal_id, gg.goal_name, gg.goal_description, gg.goal_deadline, gg.goal_scope,
+                        (gc.username IS NOT NULL) AS completed
+                    FROM group_goals gg
+                    LEFT JOIN group_goal_completions gc
+                        ON gc.group_id = gg.group_id AND gc.goal_id = gg.goal_id AND gc.username = %s
+                    WHERE gg.group_id = %s
+                    ORDER BY gg.goal_id ASC
                     """,
-                    (group_id,)
+                    (access_username, group_id)
                 )
                 columns = [col.name for col in cursor.description]
                 goals = []
@@ -602,3 +605,82 @@ class SupabaseConnect:
                 self.connection.commit()
                 return {"success": False, "error": "Could not fetch group events"}
 
+    def toggle_goal_completion(self, access_username, group_id, goal_id):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT gg.goal_scope FROM group_goals gg
+                    JOIN group_space_membership gsm ON gsm.group_id = gg.group_id
+                    WHERE gg.group_id = %s AND gg.goal_id = %s AND gsm.username = %s
+                    """,
+                    (group_id, goal_id, access_username)
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return {"success": False, "error": "Goal not found in a group space you are a member of"}
+                if row[0] != "EVERYONE" and row[0] != access_username:
+                    return {"success": False, "error": "This goal is not assigned to you"}
+
+                cursor.execute(
+                    "DELETE FROM group_goal_completions WHERE group_id = %s AND goal_id = %s AND username = %s",
+                    (group_id, goal_id, access_username)
+                )
+                completed = False
+                if cursor.rowcount == 0:
+                    cursor.execute(
+                        "INSERT INTO group_goal_completions (group_id, goal_id, username) VALUES (%s, %s, %s)",
+                        (group_id, goal_id, access_username)
+                    )
+                    completed = True
+                self.connection.commit()
+                return {"success": True, "goal_id": goal_id, "completed": completed}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not update goal progress"}
+
+    def get_group_goal_progress(self, access_username, group_id):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM group_spaces
+                    WHERE id = %s AND (owner_user = %s OR %s = ANY(COALESCE(admin_list, '{}')))
+                    """,
+                    (group_id, access_username, access_username)
+                )
+                if not cursor.fetchone():
+                    return {"success": False, "error": "You must be an admin to view goal progress"}
+
+                cursor.execute(
+                    """
+                    SELECT gg.goal_id, gsm.username, (gc.username IS NOT NULL) AS completed
+                    FROM group_goals gg
+                    JOIN group_space_membership gsm ON gsm.group_id = gg.group_id
+                    LEFT JOIN group_goal_completions gc
+                        ON gc.group_id = gg.group_id AND gc.goal_id = gg.goal_id AND gc.username = gsm.username
+                    WHERE gg.group_id = %s AND (gg.goal_scope = 'EVERYONE' OR gg.goal_scope = gsm.username)
+                    ORDER BY gg.goal_id ASC, gsm.username ASC
+                    """,
+                    (group_id,)
+                )
+                progress = {}
+                for goal_id, username, completed in cursor.fetchall():
+                    if goal_id not in progress:
+                        progress[goal_id] = {"goal_id": goal_id, "completed_count": 0, "total": 0, "members": []}
+                    progress[goal_id]["members"].append({"username": username, "completed": completed})
+                    progress[goal_id]["total"] += 1
+                    if completed:
+                        progress[goal_id]["completed_count"] += 1
+                return {"success": True, "progress": list(progress.values())}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not fetch goal progress"}
