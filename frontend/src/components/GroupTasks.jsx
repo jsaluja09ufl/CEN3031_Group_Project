@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
+import { recordTaskCompletion } from '../utils/plantState'
 
 export default function GroupTasks({ groupId, isAdmin }) {
   const [tasks, setTasks] = useState([])
@@ -72,6 +73,10 @@ export default function GroupTasks({ groupId, isAdmin }) {
         setTasks((prev) =>
           prev.map((t) => (t.task_id === taskId ? { ...t, completed: res.task.completed } : t))
         )
+        if (res.task && res.task.completed) {
+          const username = localStorage.getItem('username') || ''
+          recordTaskCompletion(username)
+        }
       }
     } catch {}
   }
