@@ -88,6 +88,13 @@ def get_events(session_token: str = Header()):
         return {"success": False, "error": "Invalid session"}
     return {"success": True, "events": supabase_client.get_events(session["username"])}
 
+@app.get("/events/schedule")
+def get_schedule(session_token: str = Header()):
+    session = redis.validate_session(session_token)
+    if not session:
+        return {"success": False, "error": "Invalid session"}
+    return supabase_client.get_user_schedule(session["username"])
+
 @app.post("/group_spaces/create")
 def create_group_space(group: GroupSpaceCreate, session_token: str = Header()):
     session = redis.validate_session(session_token)

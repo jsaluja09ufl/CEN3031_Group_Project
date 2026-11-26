@@ -65,6 +65,11 @@ export const api = {
     return res.data;
   },
 
+  getSchedule: async (session_token) => {
+    const res = await apiClient.get('/events/schedule', { headers: { 'session-token': session_token } });
+    return res.data;
+  },
+
   createGroupSpace: async (session_token, group) => {
     const res = await apiClient.post('/group_spaces/create', group, {
       headers: { 'session-token': session_token }

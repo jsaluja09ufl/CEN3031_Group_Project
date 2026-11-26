@@ -602,3 +602,38 @@ class SupabaseConnect:
                 self.connection.commit()
                 return {"success": False, "error": "Could not fetch group events"}
 
+    def get_user_schedule(self, username):
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            self.connection.rollback()
+            try:
+                cursor.execute(
+                    """
+                    SELECT e.event_id, NULL::INT AS group_id, NULL AS group_name, e.title, e.description,
+                        e.category, e.priority, e.start_time, e.end_time
+                    FROM events e
+                    WHERE e.username = %s
+                    UNION ALL
+                    SELECT ge.event_id, ge.group_id, gs.name AS group_name, ge.title, ge.description,
+                        ge.category, ge.priority, ge.start_time, ge.end_time
+                    FROM group_events ge
+                    JOIN group_spaces gs ON gs.id = ge.group_id
+                    WHERE gs.owner_user = %s
+                        OR ge.group_id IN (SELECT group_id FROM group_space_membership WHERE username = %s)
+                    ORDER BY start_time ASC
+                    """,
+                    (username, username, username)
+                )
+                columns = [col.name for col in cursor.description]
+                events = []
+                for row in cursor.fetchall():
+                    item = dict(zip(columns, row))
+                    item["start_time"] = item["start_time"].isoformat()
+                    item["end_time"] = item["end_time"].isoformat()
+                    events.append(item)
+                return {"success": True, "events": events}
+            except psycopg.Error as e:
+                self.connection.rollback()
+                cursor.execute("INSERT INTO error_log (error_message) VALUES (%s)", (str(e),))
+                self.connection.commit()
+                return {"success": False, "error": "Could not fetch schedule"}

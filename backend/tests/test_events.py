@@ -107,3 +107,27 @@ def test_get_events(logged_in):
         res = client.get("/events", headers=HEADERS)
     assert res.json() == {"success": True, "events": events}
     mock_get.assert_called_once_with("testuser")
+
+
+def test_get_schedule(logged_in):
+    mock_res = {
+        "success": True,
+        "events": [
+            {"event_id": 1, "group_id": None, "group_name": None, "title": "Study for exam"},
+            {"event_id": 3, "group_id": 2, "group_name": "Study Group", "title": "Group meeting"},
+        ],
+    }
+    with patch.object(main.supabase_client, "get_user_schedule", return_value=mock_res) as mock_get:
+        res = client.get("/events/schedule", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == mock_res
+    mock_get.assert_called_once_with("testuser")
+
+
+def test_get_schedule_invalid_session():
+    with patch.object(main.redis, "validate_session", return_value=False):
+        res = client.get("/events/schedule", headers=HEADERS)
+
+    assert res.status_code == 200
+    assert res.json() == {"success": False, "error": "Invalid session"}

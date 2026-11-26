@@ -83,6 +83,11 @@ textarea {
   color: #991b1b;
 }
 
+.message.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .event-list {
   list-style: none;
   padding: 0;
@@ -99,6 +104,18 @@ textarea {
 .event.priority-high { border-left-color: #dc2626; }
 .event.priority-medium { border-left-color: #f59e0b; }
 .event.priority-low { border-left-color: #16a34a; }
+
+.event.event-conflict {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.conflict-tag {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #b91c1c;
+}
 
 .event-header {
   display: flex;

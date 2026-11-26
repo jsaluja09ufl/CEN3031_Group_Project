@@ -6,6 +6,8 @@ import GroupTasks from './GroupTasks'
 import GroupViewMembership from './GroupViewMembership'
 import { api } from '../api/client'
 import { validateEvent } from '../utils/validateEvent'
+import { findConflicts, getConflictKeys, eventKey } from '../utils/eventConflicts'
+import ConflictWarning from './ConflictWarning'
 
 const formatTime = (time) =>
   new Date(time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
@@ -39,6 +41,8 @@ export default function GroupSpaceView({
   const [eventForm, setEventForm] = useState(emptyEventForm)
   const [eventMessage, setEventMessage] = useState(null)
   const [submittingEvent, setSubmittingEvent] = useState(false)
+  const [schedule, setSchedule] = useState([])
+  const [conflicts, setConflicts] = useState([])
 
   const token = localStorage.getItem('session_token')
   const effectiveGroupId = space?.id || Number(localStorage.getItem('current_space_id'))
@@ -62,8 +66,26 @@ export default function GroupSpaceView({
     setIsAdmin(Boolean(isOwner || space?.is_admin))
   }, [space, effectiveUser, isOwner])
 
+  const loadSchedule = async () => {
+    if (!token) return
+    try {
+      const res = await api.getSchedule(token)
+      if (res.success) {
+        setSchedule(res.events || [])
+      }
+    } catch {
+      setSchedule([])
+    }
+  }
+
+  const updateEventForm = (changes) => {
+    setEventForm({ ...eventForm, ...changes })
+    setConflicts([])
+  }
+
   useEffect(() => {
     loadGroupEvents()
+    loadSchedule()
   }, [effectiveGroupId])
 
   const handleCreateEvent = async (e) => {
@@ -76,6 +98,17 @@ export default function GroupSpaceView({
       return
     }
 
+    const found = findConflicts({ start_time: eventForm.startTime, end_time: eventForm.endTime }, schedule)
+    if (found.length > 0) {
+      setConflicts(found)
+      return
+    }
+
+    saveGroupEvent()
+  }
+
+  const saveGroupEvent = async () => {
+    setConflicts([])
     setSubmittingEvent(true)
     try {
       const res = await api.createGroupEvent(token, effectiveGroupId, {
@@ -92,6 +125,7 @@ export default function GroupSpaceView({
         setEventForm(emptyEventForm)
         setShowEventForm(false)
         loadGroupEvents()
+        loadSchedule()
       } else {
         setEventMessage({ type: 'error', text: res.error || 'Failed to create group event' })
       }
@@ -119,6 +153,8 @@ export default function GroupSpaceView({
       </div>
     )
   }
+
+  const conflictKeys = getConflictKeys(schedule)
 
   const selectedDateStr = selectedDate.toDateString()
   const eventsOnSelectedDate = events.filter((ev) => {
@@ -175,7 +211,7 @@ export default function GroupSpaceView({
               <input
                 name="title"
                 value={eventForm.title}
-                onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
+                onChange={(e) => updateEventForm({ title: e.target.value })}
                 maxLength={100}
                 required
               />
@@ -187,7 +223,7 @@ export default function GroupSpaceView({
                   type="datetime-local"
                   name="startTime"
                   value={eventForm.startTime}
-                  onChange={(e) => setEventForm({ ...eventForm, startTime: e.target.value })}
+                  onChange={(e) => updateEventForm({ startTime: e.target.value })}
                   required
                 />
               </div>
@@ -197,7 +233,7 @@ export default function GroupSpaceView({
                   type="datetime-local"
                   name="endTime"
                   value={eventForm.endTime}
-                  onChange={(e) => setEventForm({ ...eventForm, endTime: e.target.value })}
+                  onChange={(e) => updateEventForm({ endTime: e.target.value })}
                   required
                 />
               </div>
@@ -208,7 +244,7 @@ export default function GroupSpaceView({
                 <select
                   name="priority"
                   value={eventForm.priority}
-                  onChange={(e) => setEventForm({ ...eventForm, priority: e.target.value })}
+                  onChange={(e) => updateEventForm({ priority: e.target.value })}
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -220,7 +256,7 @@ export default function GroupSpaceView({
                 <select
                   name="category"
                   value={eventForm.category}
-                  onChange={(e) => setEventForm({ ...eventForm, category: e.target.value })}
+                  onChange={(e) => updateEventForm({ category: e.target.value })}
                 >
                   <option value="">None</option>
                   <option value="Meeting">Meeting</option>
@@ -236,14 +272,18 @@ export default function GroupSpaceView({
               <textarea
                 name="description"
                 value={eventForm.description}
-                onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                onChange={(e) => updateEventForm({ description: e.target.value })}
                 maxLength={500}
                 rows={2}
               />
             </div>
-            <button className="btn-submit" type="submit" disabled={submittingEvent}>
-              {submittingEvent ? 'Adding Event...' : 'Add Group Event'}
-            </button>
+            {conflicts.length > 0 ? (
+              <ConflictWarning conflicts={conflicts} onConfirm={saveGroupEvent} onCancel={() => setConflicts([])} />
+            ) : (
+              <button className="btn-submit" type="submit" disabled={submittingEvent}>
+                {submittingEvent ? 'Adding Event...' : 'Add Group Event'}
+              </button>
+            )}
           </form>
         )}
 
@@ -256,8 +296,11 @@ export default function GroupSpaceView({
               tileContent={({ date, view }) => {
                 if (view === 'month') {
                   const dateStr = date.toDateString()
-                  const hasEvent = events.some((ev) => new Date(ev.start_time).toDateString() === dateStr)
-                  return hasEvent ? <div style={{ fontSize: '8px', textAlign: 'center', color: '#2563eb' }}>●</div> : null
+                  const dayEvents = events.filter((ev) => new Date(ev.start_time).toDateString() === dateStr)
+                  const hasConflict = dayEvents.some((ev) => conflictKeys.has(eventKey(ev)))
+                  return dayEvents.length > 0
+                    ? <div style={{ fontSize: '8px', textAlign: 'center', color: hasConflict ? '#dc2626' : '#2563eb' }}>●</div>
+                    : null
                 }
                 return null
               }}
@@ -285,7 +328,10 @@ export default function GroupSpaceView({
         ) : (
           <ul className="event-list">
             {events.map((event) => (
-              <li key={event.event_id || event.id} className={`event priority-${event.priority || 'medium'}`}>
+              <li
+                key={event.event_id || event.id}
+                className={`event priority-${event.priority || 'medium'} ${conflictKeys.has(eventKey(event)) ? 'event-conflict' : ''}`}
+              >
                 <div className="event-header">
                   <strong>{event.title}</strong>
                   {event.priority && <span className="priority-tag">{event.priority}</span>}
@@ -296,6 +342,9 @@ export default function GroupSpaceView({
                   </div>
                 )}
                 {event.category && <div className="event-category">{event.category}</div>}
+                {conflictKeys.has(eventKey(event)) && (
+                  <div className="conflict-tag">⚠ Overlaps with another event on your schedule</div>
+                )}
                 {event.description && <p className="event-description">{event.description}</p>}
                 {event.created_by && (
                   <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>
