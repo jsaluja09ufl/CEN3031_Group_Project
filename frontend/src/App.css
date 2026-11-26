@@ -130,3 +130,457 @@ textarea {
     gap: 0;
   }
 }
+
+/* =========================================================
+   Gamified Plant Feature Styles (Inspired by Forest & Flora)
+   ========================================================= */
+
+.plant-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.85rem;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1.5px solid #a7f3d0;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.12);
+  text-align: left;
+}
+
+.plant-icon-btn:hover {
+  transform: translateY(-1.5px);
+  border-color: #34d399;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.22);
+}
+
+.plant-icon-emoji-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.plant-icon-emoji {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.plant-icon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.plant-icon-top {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.plant-icon-level {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #065f46;
+  background: #d1fae5;
+  padding: 0.05rem 0.35rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.plant-icon-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #047857;
+}
+
+.plant-icon-bar-bg {
+  width: 70px;
+  height: 4px;
+  background: #d1fae5;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.plant-icon-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.plant-bounce {
+  animation: plantPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes plantPop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18); }
+  60% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* Plant Modal */
+.plant-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.plant-modal-card {
+  background: white;
+  border-radius: 16px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: plantModalIn 0.22s ease-out;
+}
+
+@keyframes plantModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.plant-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  background: #fcfdfd;
+}
+
+.plant-modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.plant-modal-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #065f46;
+  background: #d1fae5;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.plant-modal-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.plant-modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+}
+
+.plant-modal-close-btn:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+.plant-modal-body {
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+}
+
+.plant-svg-stage-container {
+  position: relative;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.plant-svg {
+  width: 170px;
+  height: 170px;
+  filter: drop-shadow(0 6px 12px rgba(16, 185, 129, 0.15));
+}
+
+.plant-sway {
+  transform-origin: bottom center;
+  animation: plantGentleSway 3.6s ease-in-out infinite alternate;
+}
+
+@keyframes plantGentleSway {
+  0% { transform: rotate(-2deg); }
+  100% { transform: rotate(2.5deg); }
+}
+
+.water-drop-wrapper {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.water-drop {
+  position: absolute;
+  font-size: 1.4rem;
+  animation: waterDropFall 0.8s ease-in forwards;
+}
+
+.drop-1 { left: 40%; animation-delay: 0s; }
+.drop-2 { left: 52%; animation-delay: 0.15s; }
+.drop-3 { left: 46%; animation-delay: 0.3s; }
+
+@keyframes waterDropFall {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(70px) scale(1.1);
+  }
+}
+
+.plant-stage-desc {
+  font-size: 0.95rem;
+  color: #374151;
+  margin: 0.4rem 0 0.6rem;
+}
+
+.plant-stage-quote {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #047857;
+  background: #f0fdf4;
+  border-left: 3px solid #10b981;
+  margin: 0.5rem auto 1rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  max-width: 90%;
+}
+
+.plant-progress-section {
+  background: #f8fafc;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.plant-progress-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  margin-bottom: 0.4rem;
+}
+
+.plant-progress-title {
+  font-weight: 600;
+  color: #334155;
+}
+
+.plant-progress-ratio {
+  font-weight: 700;
+  color: #059669;
+}
+
+.plant-progress-track {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.plant-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  border-radius: 9999px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.plant-progress-fill.is-max {
+  background: linear-gradient(90deg, #f59e0b 0%, #10b981 100%);
+}
+
+.plant-progress-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0.45rem 0 0;
+}
+
+.plant-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.plant-stat-box {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 8px;
+  padding: 0.6rem 0.3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.plant-stat-icon {
+  font-size: 1.1rem;
+}
+
+.plant-stat-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.plant-stat-label {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.plant-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+}
+
+.plant-water-btn {
+  background: #0284c7;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.plant-water-btn:hover {
+  background: #0369a1;
+}
+
+.plant-new-seed-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.plant-new-seed-btn:hover {
+  background: #059669;
+}
+
+/* Celebration Toast */
+.plant-celebration-toast {
+  background: #065f46;
+  color: #ecfdf5;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  animation: plantModalIn 0.25s ease-out;
+}
+
+/* Habit & Task List interactive styling */
+.habit-task-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+
+.habit-task-item {
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.6rem;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #3b82f6;
+  border-radius: 6px;
+  background: white;
+  transition: all 0.15s ease;
+}
+
+.habit-task-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.habit-task-item.is-completed {
+  border-left-color: #10b981;
+  background: #fcfdfc;
+  opacity: 0.85;
+}
+
+.habit-task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.habit-task-checkbox {
+  margin-top: 0.25rem;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #10b981;
+}
+
+.habit-task-details {
+  flex: 1;
+}
+
+.habit-task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.habit-task-title {
+  font-size: 1rem;
+}
+

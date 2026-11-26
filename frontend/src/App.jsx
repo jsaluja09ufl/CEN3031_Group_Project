@@ -11,12 +11,15 @@ import Home from './components/Home'
 import GroupSpaceBrowse from './components/GroupSpaceBrowse'
 import GroupSpaceCreationForm from './components/GroupSpaceCreationForm'
 import GroupSpaceView from './components/GroupSpaceView'
+import PlantIcon from './components/PlantIcon'
+import PlantModal from './components/PlantModal'
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [view, setView] = useState('login')
   const [events, setEvents] = useState([])
   const [selectedGroupSpace, setSelectedGroupSpace] = useState(null)
+  const [showPlantModal, setShowPlantModal] = useState(false)
 
   const loadEvents = () => {
     api.getEvents(localStorage.getItem('session_token'))
@@ -65,17 +68,18 @@ function App() {
         <div>
           <div className="home-header">
             <h2>Welcome, {currentUser}!</h2>
-            <button
-              className="btn-submit"
-              onClick={() => {
-                localStorage.removeItem('session_token')
-                setCurrentUser(null)
-                setEvents([])
-                setView('login')
-              }}
-            >
-              Log Out
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <PlantIcon
+                currentUser={currentUser}
+                onClick={() => setShowPlantModal(true)}
+              />
+              <button
+                className="btn-submit"
+                onClick={handleLogout}
+              >
+                Log Out
+              </button>
+            </div>
           </div>
           <EventForm onEventCreated={loadEvents} />
           <h2>Your Events</h2>
@@ -147,7 +151,10 @@ function App() {
             ← Back to Home
           </button>
 
-          <HabitTask />
+          <HabitTask
+            currentUser={currentUser}
+            onOpenPlant={() => setShowPlantModal(true)}
+          />
         </div>
       )}
 
@@ -191,6 +198,14 @@ function App() {
             </button>
           </p>
         </div>
+      )}
+
+      {currentUser && (
+        <PlantModal
+          isOpen={showPlantModal}
+          onClose={() => setShowPlantModal(false)}
+          currentUser={currentUser}
+        />
       )}
 
     </div>

@@ -88,3 +88,29 @@ def list_habit_tasks(
                 (username,)
             )
             return cursor.fetchall()
+
+
+@router.patch("/{item_id}/toggle")
+def toggle_habit_task(
+    item_id: int,
+    authorization: str | None = Header(default=None)
+):
+    username = authenticated_username(authorization)
+
+    with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+        with connection.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
+                """
+                UPDATE habit_tasks
+                SET completed = NOT COALESCE(completed, FALSE)
+                WHERE id = %s AND username = %s
+                RETURNING id, title, description, type,
+                          completed, created_at
+                """,
+                (item_id, username)
+            )
+            result = cursor.fetchone()
+            if not result:
+                raise HTTPException(status_code=404, detail="Item not found")
+            return result
+

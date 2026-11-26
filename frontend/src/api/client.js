@@ -54,6 +54,16 @@ export const api = {
     return res.data;
   },
 
+  // Toggle habit or task completion (grows productivity plant)
+  toggleHabitTask: async (sessionToken, itemId) => {
+    const res = await apiClient.patch(`/habit-tasks/${itemId}/toggle`, {}, {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`
+      }
+    });
+    return res.data;
+  },
+
   // https://axios-http.com/docs/req_config
   createEvent: async (session_token, event) => {
     const res = await apiClient.post('/events', event, { headers: { 'session-token': session_token } });
