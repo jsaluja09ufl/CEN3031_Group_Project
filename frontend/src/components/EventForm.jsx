@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { api } from '../api/client'
 import { validateEvent } from '../utils/validateEvent'
+import { findConflicts } from '../utils/eventConflicts'
+import ConflictWarning from './ConflictWarning'
 
 const emptyForm = {
   title: '',
@@ -11,12 +13,14 @@ const emptyForm = {
   endTime: ''
 }
 
-export default function EventForm({ onEventCreated }) {
+export default function EventForm({ onEventCreated, schedule = [] }) {
   const [form, setForm] = useState(emptyForm)
   const [message, setMessage] = useState(null)
+  const [conflicts, setConflicts] = useState([])
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+    setConflicts([])
   }
 
   const handleSubmit = async (e) => {
@@ -29,6 +33,17 @@ export default function EventForm({ onEventCreated }) {
       return
     }
 
+    const found = findConflicts({ start_time: form.startTime, end_time: form.endTime }, schedule)
+    if (found.length > 0) {
+      setConflicts(found)
+      return
+    }
+
+    saveEvent()
+  }
+
+  const saveEvent = async () => {
+    setConflicts([])
     try {
       const result = await api.createEvent(localStorage.getItem('session_token'), {
         title: form.title.trim(),
@@ -92,7 +107,11 @@ export default function EventForm({ onEventCreated }) {
         <label>Description</label>
         <textarea name="description" value={form.description} onChange={handleChange} maxLength={500} rows={3} />
       </div>
-      <button className="btn-submit" type="submit">Add Event</button>
+      {conflicts.length > 0 ? (
+        <ConflictWarning conflicts={conflicts} onConfirm={saveEvent} onCancel={() => setConflicts([])} />
+      ) : (
+        <button className="btn-submit" type="submit">Add Event</button>
+      )}
       {message && <div className={`message ${message.type}`}>{message.text}</div>}
     </form>
   )

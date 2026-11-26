@@ -7,6 +7,7 @@ import HabitTask from './features/habitTask/HabitTask'
 import EventForm from './components/EventForm'
 import EventList from './components/EventList'
 import { api } from './api/client'
+import { getConflictKeys } from './utils/eventConflicts'
 import Home from './components/Home'
 import GroupSpaceBrowse from './components/GroupSpaceBrowse'
 import GroupSpaceCreationForm from './components/GroupSpaceCreationForm'
@@ -19,7 +20,7 @@ function App() {
   const [selectedGroupSpace, setSelectedGroupSpace] = useState(null)
 
   const loadEvents = () => {
-    api.getEvents(localStorage.getItem('session_token'))
+    api.getSchedule(localStorage.getItem('session_token'))
       .then((res) => {
         if (res.success) setEvents(res.events)
       })
@@ -77,9 +78,9 @@ function App() {
               Log Out
             </button>
           </div>
-          <EventForm onEventCreated={loadEvents} />
+          <EventForm onEventCreated={loadEvents} schedule={events} />
           <h2>Your Events</h2>
-          <EventList events={events} />
+          <EventList events={events} conflictKeys={getConflictKeys(events)} />
           <Home username={currentUser} />
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
             <button
