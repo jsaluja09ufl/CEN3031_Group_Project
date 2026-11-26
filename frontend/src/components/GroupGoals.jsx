@@ -8,7 +8,7 @@ const emptyGoalForm = {
   goal_scope: 'EVERYONE'
 }
 
-export default function GroupGoals({ groupId, isAdmin }) {
+export default function GroupGoals({ groupId, isAdmin, currentUser }) {
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -16,6 +16,7 @@ export default function GroupGoals({ groupId, isAdmin }) {
   const [message, setMessage] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [members, setMembers] = useState([])
+  const [progress, setProgress] = useState({})
 
   const token = localStorage.getItem('session_token')
 
@@ -48,10 +49,48 @@ export default function GroupGoals({ groupId, isAdmin }) {
     }
   }
 
+  const loadProgress = async () => {
+    if (!groupId || !token || !isAdmin) return
+    try {
+      const res = await api.getGoalProgress(token, groupId)
+      if (res.success) {
+        const byGoal = {}
+        res.progress.forEach((item) => {
+          byGoal[item.goal_id] = item
+        })
+        setProgress(byGoal)
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error loading goal progress' })
+    }
+  }
+
   useEffect(() => {
     loadGoals()
     loadMembers()
   }, [groupId])
+
+  useEffect(() => {
+    loadProgress()
+  }, [groupId, isAdmin])
+
+  const isAssignedToMe = (goal) => goal.goal_scope === 'EVERYONE' || goal.goal_scope === currentUser
+
+  const handleToggle = async (goalId) => {
+    try {
+      const res = await api.toggleGoalCompletion(token, groupId, goalId)
+      if (res.success) {
+        setGoals((prev) =>
+          prev.map((g) => (g.goal_id === goalId ? { ...g, completed: res.completed } : g))
+        )
+        loadProgress()
+      } else {
+        setMessage({ type: 'error', text: res.error || 'Failed to update goal' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error updating goal' })
+    }
+  }
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -80,6 +119,7 @@ export default function GroupGoals({ groupId, isAdmin }) {
         setForm(emptyGoalForm)
         setShowForm(false)
         loadGoals()
+        loadProgress()
       } else {
         setMessage({ type: 'error', text: res.error || res.message || 'Failed to create goal' })
       }
@@ -205,6 +245,44 @@ export default function GroupGoals({ groupId, isAdmin }) {
               {goal.goal_deadline && (
                 <div>
                   Deadline: {formatDeadline(goal.goal_deadline)}
+                </div>
+              )}
+
+              {isAssignedToMe(goal) && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(goal.completed)}
+                    onChange={() => handleToggle(goal.goal_id)}
+                    style={{ width: '1.1rem', height: '1.1rem', cursor: 'pointer' }}
+                  />
+                  {goal.completed ? 'Done' : 'Mark as done'}
+                </label>
+              )}
+
+              {isAdmin && progress[goal.goal_id] && (
+                <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: '#f9fafb', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>
+                    <strong>Progress:</strong>{' '}
+                    {progress[goal.goal_id].completed_count} of {progress[goal.goal_id].total}{' '}
+                    {progress[goal.goal_id].total === 1 ? 'member' : 'members'} done
+                  </div>
+                  <div style={{ height: '8px', background: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${(progress[goal.goal_id].completed_count / progress[goal.goal_id].total) * 100}%`,
+                        background: '#10b981'
+                      }}
+                    />
+                  </div>
+                  <ul style={{ margin: '0.5rem 0 0', paddingLeft: 0, listStyle: 'none', fontSize: '0.85rem' }}>
+                    {progress[goal.goal_id].members.map((member) => (
+                      <li key={member.username} style={{ color: member.completed ? '#166534' : '#6b7280' }}>
+                        {member.completed ? '✓' : '✗'} {member.username}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </li>

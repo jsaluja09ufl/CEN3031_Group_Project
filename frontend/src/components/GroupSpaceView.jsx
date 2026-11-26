@@ -318,6 +318,7 @@ export default function GroupSpaceView({
       <GroupGoals
         groupId={effectiveGroupId}
         isAdmin={isAdmin}
+        currentUser={effectiveUser}
       />
 
       {/* MEMBERSHIP SECTION */}

@@ -93,6 +93,20 @@ export const api = {
     return res.data;
   },
 
+  toggleGoalCompletion: async (session_token, group_id, goal_id) => {
+    const res = await apiClient.patch(`/group_spaces/${group_id}/goals/${goal_id}/toggle`, {}, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
+  getGoalProgress: async (session_token, group_id) => {
+    const res = await apiClient.get(`/group_spaces/${group_id}/goals/progress`, {
+      headers: { 'session-token': session_token }
+    });
+    return res.data;
+  },
+
   getGroupMembers: async (session_token, group_id) => {
     const res = await apiClient.get(`/group_spaces/${group_id}/members`, {
       headers: { 'session-token': session_token }
