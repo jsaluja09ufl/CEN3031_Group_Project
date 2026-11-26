@@ -11,6 +11,9 @@ export default function GroupSpaceBrowse({
   const [message, setMessage] = useState(null)
   const [invites, setInvites] = useState([])
   const [respondingId, setRespondingId] = useState(null)
+  const [publicSpaces, setPublicSpaces] = useState([])
+  const [loadingPublicSpaces, setLoadingPublicSpaces] = useState(true)
+  const [joiningId, setJoiningId] = useState(null)
 
   const token = localStorage.getItem('session_token')
 
@@ -28,6 +31,42 @@ export default function GroupSpaceBrowse({
       setMessage({ type: 'error', text: 'Could not connect to server to load spaces' })
     } finally {
       setLoading(false)
+    }
+  }
+
+    const loadPublicSpaces = async () => {
+    if (!token) return
+    setLoadingPublicSpaces(true)
+    try {
+      const res = await api.getPublicGroupSpaces(token)
+      if (res.success) {
+        setPublicSpaces(res.public_group_spaces || [])
+      } else {
+        setMessage({ type: 'error', text: res.error || 'Failed to load public spaces' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Could not connect to server to load public spaces' })
+    } finally {
+      setLoadingPublicSpaces(false)
+    }
+  }
+
+    const handleJoin = async (groupId) => {
+    setJoiningId(groupId)
+    setMessage(null)
+    try {
+      const res = await api.joinPublicGroupSpace(token, groupId)
+      if (res.success) {
+        setMessage({ type: 'success', text: 'You joined the group space!' })
+        await loadSpaces()
+        await loadPublicSpaces()
+      } else {
+        setMessage({ type: 'error', text: res.error || 'Failed to join group space' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error joining group space' })
+    } finally {
+      setJoiningId(null)
     }
   }
 
@@ -62,9 +101,10 @@ export default function GroupSpaceBrowse({
     }
   }
 
-  useEffect(() => {
+    useEffect(() => {
     loadSpaces()
     loadInvites()
+    loadPublicSpaces()
   }, [])
 
   return (
@@ -155,6 +195,34 @@ export default function GroupSpaceBrowse({
           })}
         </div>
       )}
+
+      <h3 style={{ marginTop: '1.5rem' }}>Browse Public Spaces</h3>
+      {loadingPublicSpaces ? (
+        <p className="no-events">Loading public spaces...</p>
+      ) : publicSpaces.length === 0 ? (
+        <p className="no-events">No public spaces available to join.</p>
+      ) : (
+        <div className="group-spaces-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {publicSpaces.map((space) => (
+            <div key={space.id} className="event">
+              <div>
+                <strong>{space.name}</strong>
+                <span> : Public</span>
+              </div>
+
+              <button
+                type="button"
+                className="btn-submit"
+                disabled={joiningId !== null}
+                onClick={() => handleJoin(space.id)}
+              >
+                {joiningId === space.id ? 'Joining...' : 'Join Space'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   )
 }
